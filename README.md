@@ -1,73 +1,54 @@
 # IG Clean
 
-Application locale (React + Node + Playwright) qui suit ton compte Instagram jour après jour :
+App iOS (Swift / SwiftUI) qui suit ton compte Instagram :
 
-- **scan quotidien** de tes abonnés et abonnements ;
-- **historique** : qui s'est abonné, qui ne te suit plus, qui tu as suivi, qui tu ne suis plus ;
-- **listes** : ne me suivent pas en retour, me suivent sans que je les suive, mutuels ;
-- **nettoyage** : file d'unfollow progressive avec plafonds horaires et journaliers, délais aléatoires et liste de comptes protégés.
+- **Résumé** : abonnés, abonnements, qui ne te suit pas en retour, changements des 7 derniers jours.
+- **Historique** : qui s'est abonné, qui ne te suit plus, qui tu as suivi, qui tu ne suis plus.
+- **Nettoyage** : unfollow progressif de ceux qui ne te suivent pas, avec plafonds et comptes protégés.
 
-> ⚠️ Instagram n'offre aucune API officielle pour cela. L'app automatise ta propre session web, ce qui est contraire
-> aux conditions d'utilisation d'Instagram et peut entraîner un blocage temporaire, voire la suspension du compte.
-> Garde des plafonds bas et utilise-la à tes risques.
+Tu ouvres l'app, tu te connectes à Instagram une fois, et le scan se lance tout seul. Ensuite, un scan par jour
+à l'ouverture de l'app.
 
-## Installation
+> ⚠️ Usage personnel uniquement. Instagram n'offre aucune API officielle pour cela : l'app automatise ta propre
+> session web, ce qui est contraire à ses conditions d'utilisation et peut entraîner un blocage du compte.
+> Pour la même raison, l'app n'est pas publiable sur l'App Store (règle 5.2.2 d'Apple).
 
-Node 22.13 ou plus récent est nécessaire.
+## Installation sur ton iPhone
 
-```bash
-npm install
-npx playwright install chromium
-```
+Il faut un Mac avec **Xcode 16 ou plus récent** et un iPhone sous **iOS 17 ou plus récent**.
 
-## Utilisation
+1. Ouvre `IGClean.xcodeproj` dans Xcode.
+2. Cible **IGClean** → onglet **Signing & Capabilities** → choisis ton **Team** (ton identifiant Apple suffit)
+   et remplace l'identifiant `com.igclean.app` par un identifiant à toi, par exemple `com.tonnom.igclean`.
+3. Branche ton iPhone, sélectionne-le en haut de la fenêtre, puis lance avec ▶.
+4. Au premier lancement, sur l'iPhone : Réglages → Général → VPN et gestion de l'appareil → fais confiance à ton
+   certificat de développeur.
 
-```bash
-npm start
-```
+Avec un identifiant Apple gratuit, l'app doit être réinstallée depuis Xcode tous les 7 jours ; avec un compte
+développeur payant, une fois par an.
 
-Ouvre ensuite http://localhost:3001.
+## Limites liées à iOS
 
-1. **Se connecter à Instagram** : une fenêtre de navigateur s'ouvre, tu t'y identifies toi-même (2FA comprise).
-   L'app ne voit jamais ton mot de passe ; la session reste dans `data/browser-profile`.
-2. **Scanner maintenant** : le premier scan sert de référence, les changements apparaissent dès le suivant.
-3. Onglet **Nettoyage** : protège les comptes à garder, ajoute les autres à la file, puis **Démarrer**.
-
-Tant que l'app tourne, elle relance un scan chaque jour à l'heure choisie dans **Réglages** (ou au démarrage si
-l'heure est déjà passée) et reprend la file d'unfollow dès que les plafonds le permettent.
-
-Pour essayer sans toucher à Instagram, avec de fausses données :
-
-```bash
-npm run demo
-```
-
-### Scan planifié sans laisser l'app ouverte
-
-`npm run snapshot` fait un scan puis s'arrête : à brancher sur cron ou le Planificateur de tâches.
-L'app ne doit pas tourner en même temps (un seul navigateur peut utiliser le profil).
+- iOS suspend les apps en arrière-plan : le scan se fait à l'ouverture de l'app, et la file d'unfollow n'avance
+  que tant que l'app reste au premier plan (l'écran est maintenu allumé pendant le traitement).
+- Les données restent sur l'appareil ; « Se déconnecter et tout effacer » supprime la session et l'historique.
 
 ## Sécurités intégrées
 
 - Un scan dont les listes sont tronquées par rapport aux compteurs du profil est ignoré.
-- Chaque compte est revérifié en direct juste avant l'unfollow : quelqu'un qui s'est réabonné est épargné.
-- Au premier signe de limitation ou de vérification demandée par Instagram, la file se met en pause 24 h.
-- Le serveur n'écoute que sur `127.0.0.1`.
-
-## Variables d'environnement
-
-| Variable | Rôle |
-| --- | --- |
-| `PORT` | Port du serveur (3001 par défaut) |
-| `DATA_DIR` | Dossier de la base SQLite et du profil navigateur (`./data`) |
-| `BROWSER_CHANNEL=chrome` | Utiliser le Chrome installé plutôt que le Chromium de Playwright |
-| `HEADLESS=1` | Ne pas afficher la fenêtre pendant les scans (plus facilement détecté par Instagram) |
-| `IG_MOCK=1` | Mode démo |
+- Chaque compte est revérifié juste avant l'unfollow : quelqu'un qui s'est réabonné est épargné.
+- Au premier signe de limitation ou de vérification demandée par Instagram, la file s'arrête 24 h.
+- Le mot de passe est saisi dans la page d'Instagram elle-même ; l'app ne le voit pas.
 
 ## Structure
 
-- `server/ig/browser.js` : client Instagram (endpoints web appelés depuis la page) ; `server/ig/mock.js` : faux client.
-- `server/snapshot.js` : scan et calcul des changements ; `server/unfollow.js` : file d'unfollow.
-- `server/index.js` : API HTTP et planificateur ; `src/` : interface React.
+| Fichier | Rôle |
+| --- | --- |
+| `IGClean/InstagramClient.swift` | Requêtes Instagram, exécutées dans une vue web invisible qui partage la session |
+| `IGClean/SnapshotEngine.swift` | Comparaison d'un scan avec l'état connu, calcul des changements |
+| `IGClean/AppModel.swift` | État de l'app, connexion, scan, file d'unfollow |
+| `IGClean/Models.swift`, `IGClean/Store.swift` | Données et enregistrement (fichier JSON local) |
+| `IGClean/Views/` | Écrans SwiftUI |
 
-Pour ajouter une action, s'inspirer de `server/unfollow.js` : une tâche passée à `runExclusive` qui ouvre une session.
+Pour ajouter une action, ajoute la requête dans `InstagramClient` et son déroulé dans `AppModel`, sur le modèle
+de `runQueue()`.

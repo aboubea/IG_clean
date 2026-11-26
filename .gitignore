@@ -1,4 +1,5 @@
-node_modules/
-dist/
-data/
-data-demo/
+.DS_Store
+xcuserdata/
+DerivedData/
+build/
+*.xcuserstate
