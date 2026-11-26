@@ -1,0 +1,220 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,sans-serif;background:#e9e9ee;padding:40px;width:1240px}
+.board{padding:36px 40px 44px;border-radius:28px;margin-bottom:40px}
+.board h1{font-family:'Inter Display',Inter;font-size:34px;font-weight:800;letter-spacing:-.02em}
+.board .pitch{font-size:17px;margin:8px 0 28px;max-width:860px;line-height:1.45;opacity:.8}
+.row{display:flex;gap:40px;justify-content:space-between}
+.col{width:340px}.cap{font-size:14px;font-weight:600;margin-top:14px;text-align:center;opacity:.75}
+.phone{width:340px;height:720px;border-radius:48px;padding:10px;background:#0b0b0d;box-shadow:0 24px 50px rgba(0,0,0,.28)}
+.screen{width:100%;height:100%;border-radius:39px;overflow:hidden;position:relative;display:flex;flex-direction:column}
+.island{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:92px;height:26px;border-radius:14px;background:#000;z-index:5}
+.sb{height:46px;flex:none;display:flex;justify-content:space-between;align-items:flex-end;padding:0 26px 4px;font-size:13px;font-weight:600}
+.pad{padding:10px 20px 0;flex:1;display:flex;flex-direction:column;min-height:0}
+.av{border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:700;color:#fff;flex:none}
+.sp{flex:1}
+
+/* A — Pulse */
+#A{background:#111114;color:#f3f3f5}
+#A .screen{background:#0d0d10;color:#f4f4f6}
+#A .lime{color:#c6f432}
+#A .k{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8d8d99;font-weight:600}
+#A .big{font-family:'Inter Display';font-size:64px;font-weight:800;letter-spacing:-.04em;line-height:1;margin-top:6px}
+#A .chip{display:inline-flex;gap:6px;align-items:center;padding:5px 10px;border-radius:99px;font-size:12px;font-weight:600;background:#1f2a08;color:#c6f432}
+#A .card{background:#18181d;border-radius:22px;padding:14px 16px;margin-top:12px}
+#A .tri{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:14px}
+#A .tri div{background:#18181d;border-radius:18px;padding:12px 10px}
+#A .tri b{font-size:22px;font-weight:800;display:block;letter-spacing:-.02em}
+#A .tri span{font-size:11px;color:#9a9aa6;line-height:1.25;display:block;margin-top:2px}
+#A .cta{background:#c6f432;color:#0d0d10;border-radius:22px;padding:17px;font-weight:800;font-size:16px;text-align:center;margin:14px 0 22px}
+#A .ghost{border:1.5px solid #2c2c35;border-radius:22px;padding:15px;font-weight:700;font-size:15px;text-align:center;margin:14px 0 22px}
+#A .line{display:flex;align-items:center;gap:10px;padding:9px 0;font-size:14px;border-bottom:1px solid #222229}
+#A .line:last-child{border:0}#A .line small{color:#8d8d99;margin-left:auto;font-size:12px}
+#A .grp{display:flex;align-items:center;gap:12px}
+#A .tog{width:44px;height:26px;border-radius:99px;background:#c6f432;position:relative;flex:none;margin-left:auto}
+#A .tog:after{content:"";position:absolute;right:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#0d0d10}
+#A .tog.off{background:#2c2c35}#A .tog.off:after{right:auto;left:3px;background:#8d8d99}
+#A h2{font-family:'Inter Display';font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.15}
+#A .sub{font-size:13px;color:#9a9aa6;margin-top:4px;line-height:1.4}
+
+/* B — Tri */
+#B{background:#ffe9d6;color:#2a1608}
+#B .screen{background:#fff7ef;color:#2a1608}
+#B h2{font-family:'Inter Display';font-size:24px;font-weight:800;letter-spacing:-.02em}
+#B .deck{position:relative;height:360px;margin-top:18px}
+#B .cardx{position:absolute;inset:0;border-radius:30px;background:#fff;box-shadow:0 14px 30px rgba(120,60,10,.16);padding:22px;display:flex;flex-direction:column;align-items:center;text-align:center}
+#B .cardx.b1{transform:translateY(14px) scale(.94);background:#ffe1c7;box-shadow:none}
+#B .cardx.b2{transform:translateY(27px) scale(.88);background:#ffd0a8;box-shadow:none}
+#B .tag{font-size:12px;font-weight:700;padding:5px 11px;border-radius:99px;background:#fff0e0;color:#b4500a}
+#B .btns{display:flex;justify-content:center;gap:22px;margin-top:38px}
+#B .rb{width:66px;height:66px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;background:#fff;box-shadow:0 8px 18px rgba(120,60,10,.15)}
+#B .bento{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+#B .t{border-radius:24px;padding:14px;background:#fff}
+#B .t b{font-family:'Inter Display';font-size:30px;font-weight:800;letter-spacing:-.03em;display:block}
+#B .t span{font-size:12px;font-weight:600;opacity:.65}
+#B .t.or{background:#ff6b1a;color:#fff}#B .t.dk{background:#2a1608;color:#fff7ef}
+#B .tab{display:flex;justify-content:space-around;padding:12px 10px 24px;font-size:11px;font-weight:700;color:#b89a84}
+#B .tab .on{color:#ff6b1a}
+#B .day{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;opacity:.5;margin:16px 0 6px}
+#B .ev{display:flex;align-items:center;gap:10px;background:#fff;border-radius:18px;padding:10px 12px;margin-bottom:7px;font-size:14px;font-weight:600}
+#B .ev small{display:block;font-weight:500;font-size:12px;opacity:.6}
+#B .dot{margin-left:auto;font-size:11px;font-weight:800;padding:4px 9px;border-radius:99px}
+.g{background:#dcf7e3;color:#11743a}.r{background:#ffe0dc;color:#b3261e}.n{background:#f1e7dd;color:#7a5a43}
+
+/* C — Journal */
+#C{background:#f3efe6;color:#1d1b16}
+#C .screen{background:#fbf8f1;color:#1d1b16}
+#C .date{font-size:12px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;color:#8a8373}
+#C .lead{font-family:'Bitstream Charter',serif;font-size:29px;line-height:1.22;letter-spacing:-.01em;margin-top:10px}
+#C .lead em{font-style:normal;background:linear-gradient(transparent 62%,#ffd84d 62%)}
+#C .lead u{text-decoration:none;background:linear-gradient(transparent 62%,#ffb3a8 62%)}
+#C .rule{height:1px;background:#ddd6c6;margin:18px 0 14px}
+#C .ask{border:1.5px solid #1d1b16;border-radius:18px;padding:15px 16px;margin-bottom:10px}
+#C .ask p{font-family:'Bitstream Charter',serif;font-size:18px;line-height:1.3}
+#C .ask .acts{display:flex;gap:8px;margin-top:12px}
+#C .pb{background:#1d1b16;color:#fbf8f1;border-radius:99px;padding:9px 15px;font-size:13px;font-weight:700}
+#C .sb2{border:1.5px solid #1d1b16;border-radius:99px;padding:8px 14px;font-size:13px;font-weight:700}
+#C .small{font-size:12.5px;color:#8a8373;line-height:1.4}
+#C .li{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #e6dfd0;font-size:15px;font-weight:600}
+#C .li small{display:block;font-weight:500;font-size:12px;color:#8a8373}
+#C .pill{margin-left:auto;font-size:12px;font-weight:700;padding:6px 11px;border-radius:99px;border:1.5px solid #1d1b16}
+#C .pill.on{background:#1d1b16;color:#fbf8f1}#C .pill.keep{border-color:#cfc7b5;color:#8a8373}
+#C .num{font-family:'Bitstream Charter',serif;font-size:54px;line-height:1;letter-spacing:-.02em}
+#C .bars{display:flex;align-items:flex-end;gap:9px;height:96px;margin-top:14px}
+#C .bars i{flex:1;background:#1d1b16;border-radius:5px 5px 0 0;display:block}
+#C .bars i.neg{background:#f0a092}
+#C .wk{display:flex;gap:9px;font-size:11px;color:#8a8373;margin-top:5px}#C .wk span{flex:1;text-align:center}
+</style></head><body>
+
+<section class="board" id="A">
+<h1>A · Pulse</h1>
+<p class="pitch">Un seul écran, zéro onglet. L’app te dit en trois chiffres ce qui a changé et propose une seule action. Le nettoyage se règle par groupes intelligents plutôt que compte par compte, puis tourne tout seul.</p>
+<div class="row">
+ <div class="col"><div class="phone"><div class="screen"><div class="island"></div><div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+  <div class="pad">
+   <div class="k">Tes abonnés</div>
+   <div class="big">1 284</div>
+   <div style="margin-top:10px"><span class="chip">▲ 12 ce mois</span></div>
+   <svg viewBox="0 0 300 70" style="width:100%;margin-top:10px"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c6f432" stop-opacity=".35"/><stop offset="1" stop-color="#c6f432" stop-opacity="0"/></linearGradient></defs><path d="M0 52 L30 48 L60 50 L90 40 L120 44 L150 34 L180 36 L210 24 L240 28 L270 16 L300 12 L300 70 L0 70Z" fill="url(#g)"/><path d="M0 52 L30 48 L60 50 L90 40 L120 44 L150 34 L180 36 L210 24 L240 28 L270 16 L300 12" fill="none" stroke="#c6f432" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="300" cy="12" r="4" fill="#c6f432"/></svg>
+   <div class="tri"><div><b class="lime">+3</b><span>nouveaux depuis hier</span></div><div><b style="color:#ff7a6b">−1</b><span>est parti</span></div><div><b>84</b><span>ne te suivent pas</span></div></div>
+   <div class="card"><div class="k" style="margin-bottom:4px">Depuis hier</div>
+    <div class="line"><span class="av" style="width:28px;height:28px;background:#5b6cff;font-size:12px">L</span>@lea.photo <small class="lime">t’a rejoint</small></div>
+    <div class="line"><span class="av" style="width:28px;height:28px;background:#e0468a;font-size:12px">N</span>@noah.surf <small style="color:#ff7a6b">est parti</small></div>
+   </div>
+   <div class="sp"></div>
+   <div class="cta">Nettoyer 84 comptes</div>
+  </div></div></div><div class="cap">Accueil : tout en un coup d’œil</div></div>
+
+ <div class="col"><div class="phone"><div class="screen"><div class="island"></div><div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+  <div class="pad">
+   <h2>84 comptes ne te suivent pas</h2><div class="sub">Choisis par groupes. Tu peux ouvrir un groupe pour exclure quelqu’un.</div>
+   <div class="card grp"><div><b style="font-size:15px">Suivis depuis plus de 3 mois</b><div class="sub">41 comptes · jamais suivi en retour</div></div><div class="tog"></div></div>
+   <div class="card grp"><div><b style="font-size:15px">Suivis récemment</b><div class="sub">31 comptes · moins de 3 mois</div></div><div class="tog"></div></div>
+   <div class="card grp"><div><b style="font-size:15px">Comptes vérifiés</b><div class="sub">12 comptes · marques, célébrités</div></div><div class="tog off"></div></div>
+   <div class="card"><div class="k">Rythme</div><div style="display:flex;gap:8px;margin-top:10px;font-size:13px;font-weight:700"><span style="flex:1;text-align:center;padding:9px;border-radius:12px;background:#c6f432;color:#0d0d10">Prudent</span><span style="flex:1;text-align:center;padding:9px;border-radius:12px;background:#222229;color:#9a9aa6">Normal</span><span style="flex:1;text-align:center;padding:9px;border-radius:12px;background:#222229;color:#9a9aa6">Rapide</span></div><div class="sub" style="margin-top:8px">72 comptes · environ 4 séances de 20 min</div></div>
+   <div class="sp"></div>
+   <div class="cta">Lancer le nettoyage</div>
+  </div></div></div><div class="cap">Nettoyage : par groupes, pas un par un</div></div>
+
+ <div class="col"><div class="phone"><div class="screen"><div class="island"></div><div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+  <div class="pad" style="align-items:center;text-align:center">
+   <div class="k" style="margin-top:6px">Nettoyage en cours</div>
+   <svg viewBox="0 0 200 200" style="width:210px;margin-top:16px"><circle cx="100" cy="100" r="84" fill="none" stroke="#222229" stroke-width="14"/><circle cx="100" cy="100" r="84" fill="none" stroke="#c6f432" stroke-width="14" stroke-linecap="round" stroke-dasharray="169 528" transform="rotate(-90 100 100)"/><text x="100" y="98" text-anchor="middle" fill="#f4f4f6" font-family="Inter Display" font-weight="800" font-size="46">23</text><text x="100" y="124" text-anchor="middle" fill="#8d8d99" font-size="14" font-family="Inter">sur 72</text></svg>
+   <div style="font-size:15px;font-weight:600;margin-top:12px">Prochain dans 32 s</div><div class="sub">Garde l’app ouverte · séance 2 sur 4</div>
+   <div class="card" style="width:100%;text-align:left">
+    <div class="line">@hugo.run257 <small class="lime">✓ fait</small></div>
+    <div class="line">@ines.dev98 <small class="lime">✓ fait</small></div>
+    <div class="line">@jade.art12 <small>épargné : te suit maintenant</small></div>
+   </div>
+   <div class="sp"></div>
+   <div class="ghost" style="width:100%">Mettre en pause</div>
+  </div></div></div><div class="cap">Suivi : un anneau, rien d’autre</div></div>
+</div></section>
+
+<section class="board" id="B">
+<h1>B · Tri</h1>
+<p class="pitch">Le nettoyage devient un geste : une carte par compte, tu balaies à gauche pour unfollow, à droite pour garder. Ludique, rapide au pouce, et tu décides de chaque compte sans lire de liste.</p>
+<div class="row">
+ <div class="col"><div class="phone"><div class="screen"><div class="island"></div><div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+  <div class="pad">
+   <div style="display:flex;justify-content:space-between;align-items:baseline"><h2>À trier</h2><span style="font-weight:700;font-size:13px;opacity:.55">12 / 84</span></div>
+   <div style="height:6px;border-radius:9px;background:#ffe1c7;margin-top:10px"><div style="width:14%;height:100%;border-radius:9px;background:#ff6b1a"></div></div>
+   <div class="deck"><div class="cardx b2"></div><div class="cardx b1"></div>
+    <div class="cardx"><span class="av" style="width:104px;height:104px;font-size:42px;background:linear-gradient(135deg,#ff6b1a,#ffb347);margin-top:8px">H</span>
+     <div style="font-family:'Inter Display';font-size:24px;font-weight:800;margin-top:16px;letter-spacing:-.02em">@hugo.run257</div><div style="font-size:14px;opacity:.6;margin-top:2px">Hugo X. · compte public</div>
+     <div style="display:flex;gap:6px;margin-top:16px;flex-wrap:wrap;justify-content:center"><span class="tag">Suivi depuis 214 jours</span><span class="tag">Ne te suit pas</span></div>
+     <div class="sp"></div><div style="font-size:12px;font-weight:600;opacity:.45">← unfollow · garder →</div></div></div>
+   <div class="btns"><div class="rb" style="color:#e5372b">✕</div><div class="rb" style="width:52px;height:52px;font-size:20px;align-self:center;color:#b89a84">↺</div><div class="rb" style="color:#11a04a">♥</div></div>
+   <div class="sp"></div>
+  </div><div class="tab"><span>Résumé</span><span class="on">Trier</span><span>Journal</span></div></div></div><div class="cap">Trier : une carte, un geste</div></div>
+
+ <div class="col"><div class="phone"><div class="screen"><div class="island"></div><div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+  <div class="pad">
+   <h2>Salut 👋</h2><div style="font-size:14px;opacity:.6;margin-top:2px">Scan de ce matin, 8 h 12</div>
+   <div class="bento"><div class="t or" style="grid-row:span 2;display:flex;flex-direction:column"><span>Abonnés</span><b style="font-size:44px;margin-top:4px">1 284</b><div class="sp"></div><span style="opacity:.95">+3 depuis hier<br>+12 ce mois</span></div>
+    <div class="t"><span>Abonnements</span><b>903</b></div><div class="t"><span>Mutuels</span><b>819</b></div>
+    <div class="t dk" style="grid-column:span 2;display:flex;align-items:center;gap:12px"><div><span>À trier</span><b>84</b></div><div style="font-size:13px;opacity:.8;line-height:1.35">comptes que tu suis ne te suivent pas en retour</div><div style="margin-left:auto;background:#ff6b1a;border-radius:99px;padding:10px 14px;font-weight:800;font-size:13px">Trier</div></div>
+    <div class="t" style="grid-column:span 2"><span>Cette semaine</span><div style="display:flex;align-items:flex-end;gap:8px;height:58px;margin-top:8px"><i style="flex:1;height:40%;background:#ffd0a8;border-radius:6px"></i><i style="flex:1;height:70%;background:#ffd0a8;border-radius:6px"></i><i style="flex:1;height:30%;background:#ffd0a8;border-radius:6px"></i><i style="flex:1;height:55%;background:#ffd0a8;border-radius:6px"></i><i style="flex:1;height:85%;background:#ffd0a8;border-radius:6px"></i><i style="flex:1;height:45%;background:#ffd0a8;border-radius:6px"></i><i style="flex:1;height:100%;background:#ff6b1a;border-radius:6px"></i></div></div></div>
+   <div class="sp"></div>
+  </div><div class="tab"><span class="on">Résumé</span><span>Trier</span><span>Journal</span></div></div></div><div class="cap">Résumé : des tuiles colorées</div></div>
+
+ <div class="col"><div class="phone"><div class="screen"><div class="island"></div><div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+  <div class="pad">
+   <h2>Journal</h2>
+   <div class="day">Aujourd’hui</div>
+   <div class="ev"><span class="av" style="width:34px;height:34px;background:#5b6cff;font-size:14px">L</span><div>@lea.photo<small>Léa M.</small></div><span class="dot g">t’a rejoint</span></div>
+   <div class="ev"><span class="av" style="width:34px;height:34px;background:#12a5a5;font-size:14px">T</span><div>@tom.ski44<small>Tom R.</small></div><span class="dot g">t’a rejoint</span></div>
+   <div class="ev"><span class="av" style="width:34px;height:34px;background:#e0468a;font-size:14px">N</span><div>@noah.surf<small>Noah B.</small></div><span class="dot r">est parti</span></div>
+   <div class="day">Hier</div>
+   <div class="ev"><span class="av" style="width:34px;height:34px;background:#8a5cf6;font-size:14px">M</span><div>@mila.food<small>Mila D.</small></div><span class="dot g">t’a rejoint</span></div>
+   <div class="ev"><span class="av" style="width:34px;height:34px;background:#f59e0b;font-size:14px">A</span><div>@adam.fit359<small>Adam K.</small></div><span class="dot n">unfollow fait</span></div>
+   <div class="ev"><span class="av" style="width:34px;height:34px;background:#64748b;font-size:14px">E</span><div>@emma.art246<small>Emma S.</small></div><span class="dot n">unfollow fait</span></div>
+   <div class="sp"></div>
+  </div><div class="tab"><span>Résumé</span><span>Trier</span><span class="on">Journal</span></div></div></div><div class="cap">Journal : jour par jour</div></div>
+</div></section>
+
+<section class="board" id="C">
+<h1>C · Le Brief</h1>
+<p class="pitch">L’app te parle comme un assistant : chaque matin, une phrase résume ce qui s’est passé, puis elle te pose une ou deux questions auxquelles tu réponds d’un tap. Aucun tableau à interpréter.</p>
+<div class="row">
+ <div class="col"><div class="phone"><div class="screen"><div class="island"></div><div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+  <div class="pad">
+   <div class="date">Jeudi 26 novembre</div>
+   <div class="lead"><em>Trois personnes</em> t’ont rejoint depuis hier. <u>Une est partie.</u> Tu es à 1 284 abonnés.</div>
+   <div class="rule"></div>
+   <div class="date" style="margin-bottom:10px">À décider</div>
+   <div class="ask"><p>84 comptes que tu suis ne te suivent pas en retour.</p><div class="acts"><span class="pb">Nettoyer en douceur</span><span class="sb2">Choisir</span></div></div>
+   <div class="ask" style="border-color:#cfc7b5"><p>@noah.surf ne te suit plus. Tu le suis encore.</p><div class="acts"><span class="pb">Unfollow</span><span class="sb2">Garder</span></div></div>
+   <div class="sp"></div>
+   <div class="small" style="text-align:center;margin-bottom:22px">Prochain brief demain matin</div>
+  </div></div></div><div class="cap">Le brief du jour</div></div>
+
+ <div class="col"><div class="phone"><div class="screen"><div class="island"></div><div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+  <div class="pad">
+   <div class="date">‹ Retour</div>
+   <div class="lead" style="font-size:24px">Qui veux-tu arrêter de suivre&nbsp;?</div>
+   <div class="small" style="margin-top:6px">Les plus anciens d’abord · 72 sélectionnés sur 84</div>
+   <div class="rule" style="margin-bottom:2px"></div>
+   <div class="li"><span class="av" style="width:36px;height:36px;background:#1d1b16;font-size:14px">H</span><div>@hugo.run257<small>suivi depuis 214 jours</small></div><span class="pill on">Unfollow</span></div>
+   <div class="li"><span class="av" style="width:36px;height:36px;background:#1d1b16;font-size:14px">I</span><div>@ines.dev98<small>suivi depuis 190 jours</small></div><span class="pill on">Unfollow</span></div>
+   <div class="li"><span class="av" style="width:36px;height:36px;background:#b9b09c;font-size:14px">N</span><div>@atelier.sport<small>compte vérifié</small></div><span class="pill keep">Gardé</span></div>
+   <div class="li"><span class="av" style="width:36px;height:36px;background:#1d1b16;font-size:14px">J</span><div>@jade.art12<small>suivi depuis 122 jours</small></div><span class="pill on">Unfollow</span></div>
+   <div class="li"><span class="av" style="width:36px;height:36px;background:#b9b09c;font-size:14px">P</span><div>@paul.music7<small>suivi depuis 9 jours</small></div><span class="pill keep">Gardé</span></div>
+   <div class="sp"></div>
+   <div class="pb" style="text-align:center;padding:16px;font-size:15px;margin-bottom:22px">Confirmer 72 unfollows</div>
+  </div></div></div><div class="cap">Choisir : un tap par compte</div></div>
+
+ <div class="col"><div class="phone"><div class="screen"><div class="island"></div><div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+  <div class="pad">
+   <div class="date">Ta semaine</div>
+   <div style="display:flex;gap:26px;margin-top:12px"><div><div class="num">+9</div><div class="small">nouveaux abonnés</div></div><div><div class="num" style="color:#c8553f">−2</div><div class="small">sont partis</div></div></div>
+   <div class="bars"><i style="height:35%"></i><i style="height:60%"></i><i class="neg" style="height:22%"></i><i style="height:48%"></i><i style="height:80%"></i><i class="neg" style="height:22%"></i><i style="height:100%"></i></div>
+   <div class="wk"><span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span></div>
+   <div class="rule"></div>
+   <div class="lead" style="font-size:20px">Tu suis 903 comptes, dont <em>819 te suivent aussi</em>. C’est 91 %, mieux que la semaine dernière.</div>
+   <div class="rule"></div>
+   <div class="small">Nettoyage en cours : 23 unfollows faits sur 72. Ouvre l’app 20 minutes pour avancer.</div>
+   <div class="sp"></div>
+  </div></div></div><div class="cap">Le bilan de la semaine</div></div>
+</div></section>
+</body></html>
