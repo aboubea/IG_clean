@@ -14,6 +14,7 @@ struct PulseView: View {
                     if state.lastGoodSnapshot != nil {
                         hero
                         tiles
+                        highlightsCard
                         recentCard
                     } else if !model.isScanning {
                         Card {
@@ -33,6 +34,8 @@ struct PulseView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Menu {
+                        Button("Partager mon bilan", systemImage: "square.and.arrow.up") { sheet = .recap }
+                        Button("Mes fans fidèles", systemImage: "star") { sheet = .fans }
                         Button("Listes", systemImage: "person.2") { sheet = .lists }
                         Button("Historique", systemImage: "clock") { sheet = .history }
                         Button("Se déconnecter et tout effacer", systemImage: "trash", role: .destructive) {
@@ -56,6 +59,8 @@ struct PulseView: View {
                 case .clean: CleanFlowView()
                 case .lists: ListsView()
                 case .history: HistoryView()
+                case .recap: RecapView()
+                case .fans: LoyalFansView()
                 }
             }
         }
@@ -145,6 +150,44 @@ struct PulseView: View {
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
+    private var highlightsCard: some View {
+        let stats = model.state.stats
+        return Card {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 10) {
+                    Circle()
+                        .fill(healthColor(stats.health))
+                        .frame(width: 10, height: 10)
+                    Text(stats.health.label)
+                        .font(.headline)
+                    Text("· \(stats.mutualPercent) % de mutuels")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.muted)
+                    Spacer()
+                    if stats.scanStreak > 1 {
+                        Text("🔥 \(stats.scanStreak) j")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                    }
+                }
+                Button {
+                    sheet = .recap
+                } label: {
+                    Label("Partager mon bilan", systemImage: "square.and.arrow.up")
+                }
+                .buttonStyle(GhostButtonStyle())
+            }
+        }
+    }
+
+    private func healthColor(_ health: AccountHealth) -> Color {
+        switch health {
+        case .excellent: return Theme.lime
+        case .good: return .yellow
+        case .watch: return Theme.coral
+        }
+    }
+
     private var recentCard: some View {
         let events = Array(model.state.events.prefix(5))
         return Card {
@@ -217,7 +260,7 @@ struct PulseView: View {
 }
 
 enum PulseSheet: String, Identifiable {
-    case clean, lists, history
+    case clean, lists, history, recap, fans
 
     var id: String { rawValue }
 }

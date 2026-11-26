@@ -97,6 +97,44 @@ struct AppState: Codable {
     var lastAttemptAt: Date?
     /// Taille du nettoyage en cours, pour afficher l'avancement ; nil quand aucun n'est lancé.
     var batchTotal: Int?
+    /// Nombre total d'unfollows faits depuis l'installation (le journal, lui, est plafonné).
+    var lifetimeUnfollows = 0
+}
+
+/// Santé du compte, d'après la part d'abonnements qui te suivent en retour.
+enum AccountHealth {
+    case excellent, good, watch
+
+    static func from(ratio: Double) -> AccountHealth {
+        if ratio >= 0.8 { return .excellent }
+        if ratio >= 0.5 { return .good }
+        return .watch
+    }
+
+    var label: String {
+        switch self {
+        case .excellent: return "Compte sain"
+        case .good: return "Compte correct"
+        case .watch: return "À surveiller"
+        }
+    }
+}
+
+/// Instantané de chiffres prêts à afficher ou à partager.
+struct Stats {
+    var followers = 0
+    var following = 0
+    var mutuals = 0
+    var nonFollowers = 0
+    var weekGained = 0
+    var weekLost = 0
+    var cleaned = 0
+    /// Part des abonnements qui te suivent en retour, entre 0 et 1.
+    var mutualRatio = 0.0
+    var scanStreak = 0
+
+    var mutualPercent: Int { Int((mutualRatio * 100).rounded()) }
+    var health: AccountHealth { AccountHealth.from(ratio: mutualRatio) }
 }
 
 /// Rythme du nettoyage : plus il est rapide, plus Instagram risque de limiter le compte.
@@ -202,6 +240,56 @@ extension AppState {
             case .recent: return !user.isVerified && !isOld
             }
         }
+    }
+
+    /// Nombre de scans réussis sur des jours consécutifs finissant aujourd'hui (ou hier).
+    var scanStreak: Int {
+        let cal = Calendar.current
+        let days = Set(snapshots.filter { $0.status == .ok }.map { cal.startOfDay(for: $0.at) })
+        guard !days.isEmpty else { return 0 }
+        var day = cal.startOfDay(for: Date())
+        if !days.contains(day) {
+            guard let yesterday = cal.date(byAdding: .day, value: -1, to: day) else { return 0 }
+            day = yesterday
+            if !days.contains(day) { return 0 }
+        }
+        var streak = 0
+        while days.contains(day) {
+            streak += 1
+            guard let previous = cal.date(byAdding: .day, value: -1, to: day) else { break }
+            day = previous
+        }
+        return streak
+    }
+
+    func events(ofType type: EventType, since interval: TimeInterval, now: Date = Date()) -> Int {
+        let limit = now.addingTimeInterval(-interval)
+        return events.filter { $0.type == type && $0.at > limit }.count
+    }
+
+    var stats: Stats {
+        let following = count(in: .following)
+        let mutuals = count(in: .mutuals)
+        return Stats(
+            followers: count(in: .followers),
+            following: following,
+            mutuals: mutuals,
+            nonFollowers: count(in: .nonFollowers),
+            weekGained: events(ofType: .followerGained, since: 7 * 86400),
+            weekLost: events(ofType: .followerLost, since: 7 * 86400),
+            cleaned: lifetimeUnfollows,
+            mutualRatio: following > 0 ? Double(mutuals) / Double(following) : 0,
+            scanStreak: scanStreak
+        )
+    }
+
+    /// Tes mutuels, du plus ancien au plus récent : tes fans les plus fidèles d'abord.
+    var loyalFans: [IGUser] {
+        following.keys
+            .filter { followers[$0] != nil }
+            .compactMap { id in users[id].map { (user: $0, since: followers[id] ?? Date()) } }
+            .sorted { $0.since < $1.since }
+            .map { $0.user }
     }
 
     func unfollowsDone(since interval: TimeInterval, now: Date = Date()) -> Int {

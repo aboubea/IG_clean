@@ -200,6 +200,7 @@ final class AppModel {
                 } else {
                     try await client.unfollow(userId)
                     record(userId, .done)
+                    state.lifetimeUnfollows += 1
                     state.following[userId] = nil
                     state.events.insert(ChangeEvent(at: Date(), type: .followingRemoved, userId: userId), at: 0)
                 }

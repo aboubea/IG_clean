@@ -5,6 +5,8 @@ App iOS (Swift / SwiftUI) qui suit ton compte Instagram :
 - **Un seul écran** : ton nombre d'abonnés, ce qui a changé au dernier scan, et un bouton pour nettoyer.
 - **Historique** (menu en haut à gauche) : qui s'est abonné, qui ne te suit plus, qui tu as suivi, qui tu ne suis plus.
 - **Nettoyage** : tu choisis des groupes de comptes et un rythme, puis l'app unfollow progressivement.
+- **Bilan partageable** : une carte au format story (abonnés, mutuels, série) à poster en un tap, et un défi à envoyer à un ami.
+- **Fans fidèles** : le classement de tes abonnés mutuels, du plus ancien au plus récent.
 
 Tu ouvres l'app, tu te connectes à Instagram une fois, et le scan se lance tout seul. Ensuite, un scan par jour
 à l'ouverture de l'app.
