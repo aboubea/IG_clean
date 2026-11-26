@@ -82,9 +82,8 @@ struct AnalysisView: View {
                         GridRow {
                             Text("\(start) h").font(.caption2).foregroundStyle(Theme.muted)
                             ForEach(0..<7, id: \.self) { day in
-                                let value = works.heat.indices.contains(day) && works.heat[day].indices.contains(slot) ? works.heat[day][slot] : nil
                                 RoundedRectangle(cornerRadius: 3)
-                                    .fill(value == nil ? Theme.track : Theme.lime.opacity(0.12 + 0.88 * (value ?? 0)))
+                                    .fill(heatColor(works, day: day, slot: slot))
                                     .frame(height: 16)
                             }
                         }
@@ -99,6 +98,20 @@ struct AnalysisView: View {
         }
     }
 
+    /** Couleur d'une case de la carte des créneaux : plus l'engagement est fort, plus elle est vive. */
+    private func heatColor(_ works: WhatWorks, day: Int, slot: Int) -> Color {
+        guard works.heat.indices.contains(day), works.heat[day].indices.contains(slot), let value = works.heat[day][slot] else {
+            return Theme.track
+        }
+        return Theme.lime.opacity(0.12 + 0.88 * value)
+    }
+
+    private func postDetail(_ post: TopPost) -> String {
+        var parts = [post.formatLabel, Fmt.percent(post.engagementRate)]
+        if let views = post.views { parts.append("\(Fmt.compact(views)) vues") }
+        return parts.joined(separator: " · ")
+    }
+
     private func topPosts(_ works: WhatWorks) -> some View {
         Card {
             VStack(alignment: .leading, spacing: 10) {
@@ -108,7 +121,7 @@ struct AnalysisView: View {
                         NetworkBadge(network: post.network, size: 28)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(post.caption).font(.subheadline).lineLimit(2).foregroundStyle(Color.primary)
-                            Text("\(post.formatLabel) · \(Fmt.percent(post.engagementRate))\(post.views.map { " · \(Fmt.compact($0)) vues" } ?? "")")
+                            Text(postDetail(post))
                                 .font(.caption).foregroundStyle(Theme.muted)
                         }
                         Spacer()
