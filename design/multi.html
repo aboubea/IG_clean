@@ -1,0 +1,127 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,sans-serif;background:#e9e9ee;padding:40px;width:1640px}
+.board{padding:36px 40px 44px;border-radius:28px;background:#111114;color:#f3f3f5}
+.board h1{font-family:'Inter Display',Inter;font-size:34px;font-weight:800;letter-spacing:-.02em}
+.pitch{font-size:17px;margin:8px 0 28px;max-width:1100px;line-height:1.45;opacity:.8}
+.row{display:flex;gap:36px;justify-content:space-between}
+.col{width:340px}.cap{font-size:14px;font-weight:600;margin-top:14px;text-align:center;opacity:.75}
+.phone{width:340px;height:720px;border-radius:48px;padding:10px;background:#0b0b0d;box-shadow:0 24px 50px rgba(0,0,0,.45);border:1px solid #1d1d22}
+.screen{width:100%;height:100%;border-radius:39px;overflow:hidden;position:relative;display:flex;flex-direction:column;background:#0d0d10;color:#f4f4f6}
+.island{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:92px;height:26px;border-radius:14px;background:#000;z-index:5}
+.sb{height:46px;flex:none;display:flex;justify-content:space-between;align-items:flex-end;padding:0 26px 4px;font-size:13px;font-weight:600}
+.pad{padding:10px 18px 0;flex:1;display:flex;flex-direction:column;min-height:0}
+.sp{flex:1}
+.lime{color:#c6f432}.coral{color:#ff7a6b}.mut{color:#8d8d99}
+.k{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:#8d8d99;font-weight:600}
+.big{font-family:'Inter Display';font-size:58px;font-weight:800;letter-spacing:-.04em;line-height:1;margin-top:6px}
+.chip{display:inline-flex;gap:6px;align-items:center;padding:5px 10px;border-radius:99px;font-size:12px;font-weight:600;background:#1f2a08;color:#c6f432}
+.card{background:#18181d;border-radius:20px;padding:13px 14px;margin-top:10px}
+.cta{background:#c6f432;color:#0d0d10;border-radius:20px;padding:16px;font-weight:800;font-size:15px;text-align:center;margin:12px 0 20px}
+.ghost{border:1.5px solid #2c2c35;border-radius:20px;padding:14px;font-weight:700;font-size:14px;text-align:center;margin:10px 0 20px}
+h2{font-family:'Inter Display';font-size:24px;font-weight:800;letter-spacing:-.02em;line-height:1.15}
+.sub{font-size:12.5px;color:#9a9aa6;margin-top:4px;line-height:1.4}
+.net{width:30px;height:30px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex:none}
+.ig{background:linear-gradient(135deg,#f58529,#dd2a7b 55%,#8134af)}.tt{background:#111;border:1.5px solid #25f4ee;box-shadow:inset -2px -2px 0 #fe2c55}.fb{background:#1877f2}.li{background:#0a66c2}
+.nrow{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid #222229}
+.nrow:last-child{border:0}
+.nrow b{font-size:14.5px}.nrow small{display:block;font-size:11.5px;color:#8d8d99;margin-top:1px}
+.btn{margin-left:auto;white-space:nowrap;font-size:12px;font-weight:700;padding:7px 12px;border-radius:99px}
+.btn.on{background:#1f2a08;color:#c6f432}.btn.go{background:#c6f432;color:#0d0d10}.btn.soon{background:#222229;color:#8d8d99}
+.right{margin-left:auto;text-align:right;white-space:nowrap}.right b{display:block;font-size:14.5px}.right small{font-size:11.5px}
+.seg{display:flex;background:#18181d;border-radius:10px;padding:3px;font-size:12px;font-weight:600}
+.seg span{flex:1;text-align:center;padding:6px;color:#8d8d99}.seg .on{background:#c6f432;color:#0d0d10;border-radius:8px}
+.bar{display:flex;align-items:center;gap:8px;font-size:12.5px;margin-top:8px}
+.bar .lbl{width:92px;color:#c9c9d1}.bar .track{flex:1;height:8px;border-radius:9px;background:#222229}.bar .fill{height:100%;border-radius:9px;background:#c6f432}
+.bar .val{width:38px;text-align:right;font-weight:700}
+.heat{display:grid;grid-template-columns:22px repeat(7,1fr);gap:3px;margin-top:8px;font-size:9.5px;color:#8d8d99;align-items:center}
+.heat i{display:block;height:13px;border-radius:3px;background:#c6f432}
+.post{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #222229;font-size:13px}
+.post:last-child{border:0}
+.thumb{width:40px;height:40px;border-radius:10px;flex:none;position:relative}
+.thumb .net{position:absolute;right:-5px;bottom:-5px;width:18px;height:18px;border-radius:6px;font-size:7px;border:2px solid #18181d}
+.rec{display:flex;gap:11px;background:#18181d;border-radius:18px;padding:12px 13px;margin-top:9px;font-size:13px;line-height:1.38}
+.rec .n{width:24px;height:24px;border-radius:50%;background:#c6f432;color:#0d0d10;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;flex:none}
+</style></head><body>
+<section class="board">
+<h1>Pulse · multi-réseaux</h1>
+<p class="pitch">Le même esprit que l’app actuelle, étendu à tous les réseaux : tu connectes tes comptes une fois, l’app relève tes chiffres chaque nuit et te dit où ça grandit, ce qui marche, et quoi faire la semaine prochaine.</p>
+<div class="row">
+
+ <div class="col"><div class="phone"><div class="screen"><div class="island"></div><div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+  <div class="pad">
+   <h2>Tous tes réseaux, un seul tableau de bord</h2>
+   <div class="sub">Connecte-les une fois : on relève tes chiffres chaque nuit.</div>
+   <div class="card">
+    <div class="nrow"><span class="net ig">IG</span><div><b>Instagram</b><small>@compte.demo · Créateur</small></div><span class="btn on">✓ Connecté</span></div>
+    <div class="nrow"><span class="net tt">TT</span><div><b>TikTok</b><small>Compte Pro requis</small></div><span class="btn go">Connecter</span></div>
+    <div class="nrow"><span class="net fb">FB</span><div><b>Facebook</b><small>Ta page</small></div><span class="btn go">Connecter</span></div>
+    <div class="nrow"><span class="net li">IN</span><div><b>LinkedIn</b><small>Page entreprise</small></div><span class="btn soon">Bientôt</span></div>
+   </div>
+   <div class="card" style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:18px">💡</span><div style="font-size:12.5px;line-height:1.4">Pas de compte Pro ? C’est <b>gratuit</b> et ça prend 30 s. <span class="lime" style="font-weight:700">On te montre comment →</span></div></div>
+   <div class="sp"></div>
+   <div class="sub" style="text-align:center">🔒 Connexion officielle : on ne voit jamais ton mot de passe.</div>
+   <div class="cta">Continuer</div>
+  </div></div></div><div class="cap">1 · Connexion des réseaux</div></div>
+
+ <div class="col"><div class="phone"><div class="screen"><div class="island"></div><div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+  <div class="pad">
+   <div class="k">Ton audience totale</div>
+   <div class="big">48 920</div>
+   <div style="margin-top:9px"><span class="chip">▲ 1 240 sur 30 jours</span></div>
+   <svg viewBox="0 0 300 54" style="width:100%;margin-top:8px"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c6f432" stop-opacity=".35"/><stop offset="1" stop-color="#c6f432" stop-opacity="0"/></linearGradient></defs><path d="M0 44 L30 42 L60 43 L90 36 L120 37 L150 30 L180 29 L210 21 L240 20 L270 12 L300 8 L300 54 L0 54Z" fill="url(#g)"/><path d="M0 44 L30 42 L60 43 L90 36 L120 37 L150 30 L180 29 L210 21 L240 20 L270 12 L300 8" fill="none" stroke="#c6f432" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+   <div class="card">
+    <div class="nrow"><span class="net tt">TT</span><div><b>31 200</b><small>TikTok · eng. 6,9 %</small></div><div class="right"><b class="lime">+8,7 %</b><small class="mut">30 j</small></div></div>
+    <div class="nrow"><span class="net ig">IG</span><div><b>12 480</b><small>Instagram · eng. 4,2 %</small></div><div class="right"><b class="lime">+3,1 %</b><small class="mut">30 j</small></div></div>
+    <div class="nrow"><span class="net fb">FB</span><div><b>5 240</b><small>Facebook · eng. 1,1 %</small></div><div class="right"><b class="coral">−0,4 %</b><small class="mut">30 j</small></div></div>
+   </div>
+   <div class="card" style="background:#1f2a08;color:#e6f7b8;font-size:13px;line-height:1.4"><b class="lime">TikTok porte ta croissance</b><br>70 % de tes nouveaux abonnés ce mois viennent de là.</div>
+   <div class="sp"></div>
+   <div class="cta">Voir mon bilan de la semaine</div>
+  </div></div></div><div class="cap">2 · Accueil : tout ton public</div></div>
+
+ <div class="col"><div class="phone"><div class="screen"><div class="island"></div><div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+  <div class="pad">
+   <h2>Ce qui marche</h2>
+   <div class="seg" style="margin-top:10px"><span class="on">30 jours</span><span>7 jours</span><span>90 jours</span></div>
+   <div class="card"><div class="k">Engagement par format</div>
+    <div class="bar"><span class="lbl">Vidéo courte</span><span class="track"><span class="fill" style="display:block;width:100%"></span></span><span class="val">6,9 %</span></div>
+    <div class="bar"><span class="lbl">Carrousel</span><span class="track"><span class="fill" style="display:block;width:70%"></span></span><span class="val">4,8 %</span></div>
+    <div class="bar"><span class="lbl">Photo</span><span class="track"><span class="fill" style="display:block;width:30%"></span></span><span class="val">2,1 %</span></div>
+    <div class="bar"><span class="lbl">Texte</span><span class="track"><span class="fill" style="display:block;width:13%"></span></span><span class="val">0,9 %</span></div>
+   </div>
+   <div class="card"><div class="k">Quand publier</div>
+    <div class="heat" id="heat"></div>
+    <div class="sub" style="margin-top:7px">Ton meilleur créneau : <b class="lime" style="white-space:nowrap">mar. et jeu., 18 h-21 h</b></div>
+   </div>
+   <div class="card" style="padding-top:8px;padding-bottom:6px"><div class="k" style="margin-top:4px">Top publications</div>
+    <div class="post"><span class="thumb" style="background:linear-gradient(135deg,#3b3b8f,#c6f432)"><span class="net tt">TT</span></span><div>Routine du matin<br><small class="mut">84 k vues · 7,2 %</small></div></div>
+    <div class="post"><span class="thumb" style="background:linear-gradient(135deg,#8f3b5b,#ffb347)"><span class="net ig">IG</span></span><div>5 erreurs à éviter<br><small class="mut">Carrousel · 6,1 %</small></div></div>
+   </div>
+   <div class="sp"></div>
+  </div></div></div><div class="cap">3 · Formats, horaires, top posts</div></div>
+
+ <div class="col"><div class="phone"><div class="screen"><div class="island"></div><div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+  <div class="pad">
+   <div class="k">Semaine du 23 au 29 nov.</div>
+   <h2 style="margin-top:6px">Ton bilan</h2>
+   <div style="margin-top:8px"><span class="chip">🎯 Objectif : notoriété</span></div>
+   <div style="font-size:15px;line-height:1.42;margin-top:12px">Bonne semaine : <b class="lime">+412 abonnés</b>, surtout grâce à TikTok. Instagram progresse avec les carrousels, Facebook stagne.</div>
+   <div class="k" style="margin-top:14px">3 actions pour la semaine prochaine</div>
+   <div class="rec"><span class="n">1</span><div>Publie <b>2 vidéos courtes de plus</b> sur TikTok : tu y grandis 3× plus vite qu’ailleurs.</div></div>
+   <div class="rec"><span class="n">2</span><div>Transforme ton carrousel « 5 erreurs à éviter » <b>en vidéo TikTok</b>.</div></div>
+   <div class="rec"><span class="n">3</span><div>Facebook : <b>1 post par semaine suffit</b>, garde ton temps pour TikTok.</div></div>
+   <div class="sp"></div>
+   <div class="sub" style="text-align:center">✨ Rédigé par IA à partir de tes chiffres</div>
+   <div class="ghost">Partager mon bilan</div>
+  </div></div></div><div class="cap">4 · Bilan hebdo et actions</div></div>
+
+</div></section>
+<script>
+const days=['L','M','M','J','V','S','D'], slots=['8h','12h','15h','18h','21h'];
+const v=[[.15,.2,.18,.25,.2,.3,.22],[.3,.35,.3,.4,.35,.2,.18],[.2,.25,.22,.3,.25,.35,.3],[.45,1,.5,.95,.55,.4,.35],[.35,.7,.4,.75,.5,.6,.5]];
+let h='<span></span>'+days.map(d=>`<span style="text-align:center">${d}</span>`).join('');
+slots.forEach((s,i)=>{h+=`<span>${s}</span>`+v[i].map(x=>`<i style="opacity:${.12+x*.88}"></i>`).join('')});
+document.getElementById('heat').innerHTML=h;
+</script>
+</body></html>
