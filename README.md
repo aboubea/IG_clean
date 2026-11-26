@@ -7,6 +7,7 @@ App iOS (Swift / SwiftUI) qui suit ton compte Instagram :
 - **Nettoyage** : tu choisis des groupes de comptes et un rythme, puis l'app unfollow progressivement.
 - **Bilan partageable** : une carte au format story (abonnés, mutuels, série) à poster en un tap, et un défi à envoyer à un ami.
 - **Fans fidèles** : le classement de tes abonnés mutuels, du plus ancien au plus récent.
+- **Hot Influx** : classement d'influenceurs par croissance (5/10/20/30 j), engagement ou taille. Source de démo intégrée ; à brancher sur un fournisseur de données pour couvrir tout Instagram (voir ci-dessous).
 
 Tu ouvres l'app, tu te connectes à Instagram une fois, et le scan se lance tout seul. Ensuite, un scan par jour
 à l'ouverture de l'app.
@@ -28,6 +29,19 @@ Il faut un Mac avec **Xcode 16 ou plus récent** et un iPhone sous **iOS 17 ou p
 
 Avec un identifiant Apple gratuit, l'app doit être réinstallée depuis Xcode tous les 7 jours ; avec un compte
 développeur payant, une fois par an.
+
+## Hot Influx : source de données
+
+L'écran Hot Influx tourne sur une **source de démo** intégrée (`DemoInfluxProvider`). Couvrir tout Instagram
+n'est pas possible depuis la session de l'appareil : il faut une source externe, à placer derrière le protocole
+`HotInfluxProvider` sans toucher à l'interface.
+
+- **N'utilise pas ta session Instagram perso** pour alimenter Hot Influx : relever chaque jour les chiffres de
+  centaines de comptes ferait bannir ton compte.
+- Deux voies : une **API d'analytics d'influenceurs** payante, ou un **backend qui scrape** (ex. Apify) amorcé
+  par hashtags/catégories, relevant les chiffres chaque jour.
+- La fenêtre 30 j reste vide tant que la source n'a pas 30 jours d'historique ; l'engagement (likes/commentaires)
+  suppose de lire les posts récents de chaque compte.
 
 ## Limites liées à iOS
 

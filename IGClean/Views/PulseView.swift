@@ -34,6 +34,7 @@ struct PulseView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Menu {
+                        Button("Hot Influx", systemImage: "flame") { sheet = .hotInflux }
                         Button("Partager mon bilan", systemImage: "square.and.arrow.up") { sheet = .recap }
                         Button("Mes fans fidèles", systemImage: "star") { sheet = .fans }
                         Button("Listes", systemImage: "person.2") { sheet = .lists }
@@ -61,6 +62,7 @@ struct PulseView: View {
                 case .history: HistoryView()
                 case .recap: RecapView()
                 case .fans: LoyalFansView()
+                case .hotInflux: HotInfluxView()
                 }
             }
         }
@@ -260,7 +262,7 @@ struct PulseView: View {
 }
 
 enum PulseSheet: String, Identifiable {
-    case clean, lists, history, recap, fans
+    case clean, lists, history, recap, fans, hotInflux
 
     var id: String { rawValue }
 }
