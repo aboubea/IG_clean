@@ -51,8 +51,40 @@ final class InstagramClient: NSObject, WKNavigationDelegate {
         let config = WKWebViewConfiguration()
         config.websiteDataStore = .default()
         config.applicationNameForUserAgent = "Version/17.0 Mobile/15E148 Safari/604.1"
+        config.userContentController.addUserScript(
+            WKUserScript(source: headerCapture, injectionTime: .atDocumentStart, forMainFrameOnly: true, in: .page)
+        )
         return config
     }
+
+    /// Note les en-têtes que le site Instagram envoie lui-même à son API, pour que nos requêtes
+    /// portent exactement les mêmes (identifiant d'app, jeton de session web…) au lieu de valeurs devinées.
+    private static let headerCapture = """
+    (function () {
+      if (window.__igcHeaders) return;
+      const store = (window.__igcHeaders = {});
+      const keep = /^(x-ig-app-id|x-asbd-id|x-ig-www-claim|x-web-session-id|x-instagram-ajax)$/i;
+      const note = function (name, value) {
+        try { if (keep.test(name)) store[name] = String(value); } catch (e) {}
+      };
+      const setHeader = XMLHttpRequest.prototype.setRequestHeader;
+      XMLHttpRequest.prototype.setRequestHeader = function (name, value) {
+        note(name, value);
+        return setHeader.apply(this, arguments);
+      };
+      const originalFetch = window.fetch;
+      window.fetch = function (input, init) {
+        try {
+          const h = init && init.headers;
+          if (h) {
+            const entries = h instanceof Headers ? Array.from(h.entries()) : Object.entries(h);
+            for (const pair of entries) note(pair[0], pair[1]);
+          }
+        } catch (e) {}
+        return originalFetch.apply(this, arguments);
+      };
+    })();
+    """
 
     let webView: WKWebView
     private var ready = false
@@ -93,6 +125,15 @@ final class InstagramClient: NSObject, WKNavigationDelegate {
             loadContinuation = continuation
             webView.load(URLRequest(url: Self.origin))
         }
+        // Laisse le site faire ses propres requêtes, le temps de relever ses en-têtes (6 s au plus).
+        for _ in 0..<8 {
+            let captured = try? await webView.callAsyncJavaScript(
+                "return !!(window.__igcHeaders && Object.keys(window.__igcHeaders).length > 0);",
+                arguments: [:], in: nil, contentWorld: .page
+            )
+            if (captured as? NSNumber)?.boolValue == true { break }
+            try? await Task.sleep(nanoseconds: 750_000_000)
+        }
         ready = true
     }
 
@@ -126,11 +167,11 @@ final class InstagramClient: NSObject, WKNavigationDelegate {
 
     /// Corps d'une fonction asynchrone exécutée dans la page ; ses paramètres viennent de `arguments`.
     private static let script = """
-    if (!window.__igcAppId) {
-      const found = document.documentElement.innerHTML.match(/"X-IG-App-ID":"([0-9]+)"/);
-      window.__igcAppId = found ? found[1] : appId;
-    }
-    const headers = { 'X-IG-App-ID': window.__igcAppId, 'X-CSRFToken': csrf, 'X-Requested-With': 'XMLHttpRequest' };
+    const headers = Object.assign(
+      { 'X-IG-App-ID': appId, 'X-Requested-With': 'XMLHttpRequest' },
+      window.__igcHeaders || {},
+      { 'X-CSRFToken': csrf }
+    );
     if (method === 'POST') headers['Content-Type'] = 'application/x-www-form-urlencoded';
     try {
       const r = await fetch(path, { method: method, headers: headers, body: body || undefined, credentials: 'include' });
@@ -237,7 +278,7 @@ final class InstagramClient: NSObject, WKNavigationDelegate {
             onProgress(seen.count)
             guard let next = Self.string(json["next_max_id"]), !next.isEmpty, !users.isEmpty else { break }
             maxId = next
-            try await Task.sleep(nanoseconds: UInt64.random(in: 1_500_000_000...4_000_000_000))
+            try await Task.sleep(nanoseconds: UInt64.random(in: 2_500_000_000...6_000_000_000))
         }
         return Array(seen.values)
     }
