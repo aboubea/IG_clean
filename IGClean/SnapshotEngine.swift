@@ -13,13 +13,16 @@ enum SnapshotEngine {
         to state: inout AppState,
         followers: [IGUser],
         following: [IGUser],
-        expectedFollowers: Int,
-        expectedFollowing: Int,
+        expectedFollowers: Int?,
+        expectedFollowing: Int?,
         at: Date = Date()
     ) -> SnapshotStatus {
-        let complete =
-            Double(followers.count) >= (Double(expectedFollowers) * completeRatio).rounded(.down)
-            && Double(following.count) >= (Double(expectedFollowing) * completeRatio).rounded(.down)
+        // Compteur inconnu (profil refusé par Instagram) : on fait confiance à la liste reçue.
+        func reaches(_ count: Int, _ expected: Int?) -> Bool {
+            guard let expected else { return true }
+            return Double(count) >= (Double(expected) * completeRatio).rounded(.down)
+        }
+        let complete = reaches(followers.count, expectedFollowers) && reaches(following.count, expectedFollowing)
         // Le tout premier scan complet sert de référence : il ne génère pas d'événements.
         let hasBaseline = state.snapshots.contains { $0.status == .ok }
 
@@ -29,8 +32,8 @@ enum SnapshotEngine {
                 status: complete ? .ok : .incomplete,
                 followers: followers.count,
                 following: following.count,
-                expectedFollowers: expectedFollowers,
-                expectedFollowing: expectedFollowing
+                expectedFollowers: expectedFollowers ?? followers.count,
+                expectedFollowing: expectedFollowing ?? following.count
             ),
             at: 0
         )

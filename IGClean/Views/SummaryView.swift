@@ -45,7 +45,7 @@ struct SummaryView: View {
                     }
                 }
             }
-            .navigationTitle(state.account.map { "@\($0.username)" } ?? "IG Clean")
+            .navigationTitle(title)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Menu {
@@ -66,6 +66,11 @@ struct SummaryView: View {
                 }
             }
         }
+    }
+
+    private var title: String {
+        guard let username = model.state.account?.username, !username.isEmpty else { return "IG Clean" }
+        return "@\(username)"
     }
 
     private func recentCount(_ type: EventType) -> Int {

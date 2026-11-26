@@ -63,12 +63,12 @@ final class AppModel {
         do {
             let me = try await client.me()
             let followers = try await client.list(userId: me.id, kind: "followers") { count in
-                self.scanProgress = "Abonnés : \(count) / \(me.followerCount)"
+                self.scanProgress = "Abonnés : \(count)" + (me.followerCount.map { " / \($0)" } ?? "")
             }
             let following = try await client.list(userId: me.id, kind: "following") { count in
-                self.scanProgress = "Abonnements : \(count) / \(me.followingCount)"
+                self.scanProgress = "Abonnements : \(count)" + (me.followingCount.map { " / \($0)" } ?? "")
             }
-            state.account = Account(id: me.id, username: me.username)
+            state.account = Account(id: me.id, username: me.username ?? state.account?.username ?? "")
             let status = SnapshotEngine.apply(
                 to: &state,
                 followers: followers,
@@ -78,7 +78,7 @@ final class AppModel {
             )
             lastError = status == .ok
                 ? nil
-                : "Scan incomplet (\(followers.count)/\(me.followerCount) abonnés, \(following.count)/\(me.followingCount) abonnements) : il a été ignoré pour ne pas fausser les listes."
+                : "Scan incomplet (\(followers.count)/\(me.followerCount ?? 0) abonnés, \(following.count)/\(me.followingCount ?? 0) abonnements) : il a été ignoré pour ne pas fausser les listes."
         } catch IGError.loggedOut {
             needsLogin = true
         } catch {

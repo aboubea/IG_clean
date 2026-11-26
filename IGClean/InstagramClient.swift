@@ -13,11 +13,11 @@ enum IGError: LocalizedError {
         case .loggedOut:
             return "Session Instagram absente ou expirée : reconnecte-toi."
         case .rateLimited(let detail):
-            return "Instagram a limité les actions du compte. \(detail)"
+            return "Instagram limite temporairement les requêtes. Attends quelques heures avant de réessayer. [\(detail)]"
         case .checkpoint:
             return "Instagram demande une vérification de sécurité : ouvre Instagram et valide-la."
         case .http(let status, let detail):
-            return "Instagram a répondu \(status). \(detail)"
+            return "Instagram a répondu \(status). [\(detail)]"
         case .page(let detail):
             return "Impossible de joindre Instagram : \(detail)"
         }
@@ -26,9 +26,10 @@ enum IGError: LocalizedError {
 
 struct Profile {
     let id: String
-    let username: String
-    let followerCount: Int
-    let followingCount: Int
+    /// nil quand Instagram refuse de donner le profil : le scan continue sans ces informations.
+    var username: String?
+    var followerCount: Int?
+    var followingCount: Int?
 }
 
 struct Relationship {
@@ -125,7 +126,11 @@ final class InstagramClient: NSObject, WKNavigationDelegate {
 
     /// Corps d'une fonction asynchrone exécutée dans la page ; ses paramètres viennent de `arguments`.
     private static let script = """
-    const headers = { 'X-IG-App-ID': appId, 'X-CSRFToken': csrf, 'X-Requested-With': 'XMLHttpRequest' };
+    if (!window.__igcAppId) {
+      const found = document.documentElement.innerHTML.match(/"X-IG-App-ID":"([0-9]+)"/);
+      window.__igcAppId = found ? found[1] : appId;
+    }
+    const headers = { 'X-IG-App-ID': window.__igcAppId, 'X-CSRFToken': csrf, 'X-Requested-With': 'XMLHttpRequest' };
     if (method === 'POST') headers['Content-Type'] = 'application/x-www-form-urlencoded';
     try {
       const r = await fetch(path, { method: method, headers: headers, body: body || undefined, credentials: 'include' });
@@ -160,16 +165,22 @@ final class InstagramClient: NSObject, WKNavigationDelegate {
         let message = json?["message"] as? String ?? ""
         let lowered = message.lowercased()
 
+        // Détail affiché tel quel dans l'app : endpoint, code HTTP et début de la réponse, pour diagnostiquer.
+        let endpoint = path.split(separator: "?").first.map(String.init) ?? path
+        let snippet = message.isEmpty ? String(text.prefix(120)) : message
+        let detail = "\(endpoint) · HTTP \(status) · \(snippet)"
+
         if status == -1 { throw IGError.page(text) }
         if status == 401 || lowered.contains("login_required") || json?["require_login"] != nil || (status == 200 && json == nil) {
             throw IGError.loggedOut
         }
-        if status == 429 || json?["spam"] != nil || lowered.contains("feedback_required") || lowered.contains("wait a few minutes") {
-            throw IGError.rateLimited(message)
+        let spam = (json?["spam"] as? NSNumber)?.boolValue ?? false
+        if status == 429 || spam || lowered.contains("feedback_required") || lowered.contains("wait a few minutes") {
+            throw IGError.rateLimited(detail)
         }
         if lowered.contains("checkpoint") || json?["checkpoint_url"] != nil { throw IGError.checkpoint }
         guard status == 200, let json else {
-            throw IGError.http(status, message.isEmpty ? String(text.prefix(160)) : message)
+            throw IGError.http(status, detail)
         }
         return json
     }
@@ -180,18 +191,24 @@ final class InstagramClient: NSObject, WKNavigationDelegate {
         return nil
     }
 
+    /// Le profil (nom, compteurs) est facultatif : si Instagram le refuse, on renvoie seulement l'identifiant
+    /// et le scan des listes a quand même lieu. Seule une session absente interrompt tout.
     func me() async throws -> Profile {
         guard let id = await cookie("ds_user_id") else { throw IGError.loggedOut }
-        let json = try await call("/api/v1/users/\(id)/info/")
-        guard let user = json["user"] as? [String: Any], let username = user["username"] as? String else {
-            throw IGError.page("profil illisible")
+        do {
+            let json = try await call("/api/v1/users/\(id)/info/")
+            let user = json["user"] as? [String: Any]
+            return Profile(
+                id: id,
+                username: user?["username"] as? String,
+                followerCount: (user?["follower_count"] as? NSNumber)?.intValue,
+                followingCount: (user?["following_count"] as? NSNumber)?.intValue
+            )
+        } catch IGError.loggedOut {
+            throw IGError.loggedOut
+        } catch {
+            return Profile(id: id)
         }
-        return Profile(
-            id: id,
-            username: username,
-            followerCount: (user["follower_count"] as? NSNumber)?.intValue ?? 0,
-            followingCount: (user["following_count"] as? NSNumber)?.intValue ?? 0
-        )
     }
 
     /// kind : "followers" ou "following"
