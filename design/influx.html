@@ -1,0 +1,22 @@
+<!doctype html><meta charset="utf-8"><body style="margin:0;background:#e9e9ee;padding:40px;width:460px;font-family:Inter,sans-serif">
+<div style="width:360px;height:720px;background:#0d0d10;border-radius:40px;padding:14px;margin:auto">
+ <div style="background:#0d0d10;border-radius:30px;height:100%;color:#f4f4f6;padding:18px 18px 0;overflow:hidden">
+  <div style="text-align:center;font-weight:700;font-size:17px;margin:6px 0 14px">Hot Influx 🔥</div>
+  <div style="display:flex;background:#18181d;border-radius:10px;padding:3px;font-size:13px;font-weight:600">
+   <span style="flex:1;text-align:center;padding:7px;border-radius:8px;background:#c6f432;color:#0d0d10">Croissance</span>
+   <span style="flex:1;text-align:center;padding:7px;color:#8d8d99">Engagement</span>
+   <span style="flex:1;text-align:center;padding:7px;color:#8d8d99">Abonnés</span></div>
+  <div style="display:flex;background:#18181d;border-radius:10px;padding:3px;font-size:13px;font-weight:600;margin-top:8px">
+   <span style="flex:1;text-align:center;padding:6px;color:#8d8d99">5 j</span>
+   <span style="flex:1;text-align:center;padding:6px;border-radius:8px;background:#2c2c35">10 j</span>
+   <span style="flex:1;text-align:center;padding:6px;color:#8d8d99">20 j</span>
+   <span style="flex:1;text-align:center;padding:6px;color:#8d8d99">30 j</span></div>
+  <div id="rows" style="margin-top:10px"></div>
+ </div></div>
+<script>
+const d=[["lea.moves","Fitness","840 k","+23.8",1],["chef.nordin","Cuisine","512 k","+18.1",0],["studio.palette","Art","372 k","+14.7",0],["km.runner","Running","291 k","+12.2",0],["vibe.records","Musique","238 k","+10.6",1],["maison.lora","Mode","201 k","+9.1",0],["tech.posé","Tech","174 k","+7.9",0]];
+document.getElementById('rows').innerHTML=d.map((r,i)=>`<div style="display:flex;align-items:center;gap:12px;padding:11px 2px;border-bottom:1px solid #1c1c22">
+<span style="width:24px;font-weight:700;color:${i<3?'#c6f432':'#8d8d99'}">${i+1}</span>
+<div><div style="font-weight:600;font-size:15px">@${r[0]} ${r[4]?'<span style=\"color:#3897f0;font-size:12px\">✔</span>':''}</div><div style="color:#8d8d99;font-size:12px">${r[1]} · ${r[2]} abonnés</div></div>
+<div style="margin-left:auto;text-align:right"><div style="color:#c6f432;font-weight:700;font-size:15px">${r[3]} %</div><div style="color:#8d8d99;font-size:11px">sur 10 j</div></div></div>`).join('');
+</script></body>
