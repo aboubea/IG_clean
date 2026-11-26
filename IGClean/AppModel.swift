@@ -13,6 +13,8 @@ final class AppModel {
     private(set) var lastError: String?
     private(set) var runnerActive = false
     private(set) var runnerStatus: String?
+    /// Secondes avant le prochain unfollow, pendant la pause entre deux.
+    private(set) var countdown: Int?
 
     let client = InstagramClient()
     private var runnerTask: Task<Void, Never>?
@@ -112,6 +114,24 @@ final class AppModel {
     func clearQueue() {
         stopRunner()
         state.queue = []
+        state.batchTotal = nil
+        runnerStatus = nil
+        Store.save(state)
+    }
+
+    /// Met les comptes choisis en file et démarre aussitôt.
+    func startCleaning(_ ids: Set<String>, pace: Pace) {
+        state.settings = pace.settings
+        enqueue(ids)
+        state.batchTotal = state.queue.count
+        Store.save(state)
+        startRunner()
+    }
+
+    /// Referme l'écran « terminé ».
+    func finishBatch() {
+        state.batchTotal = nil
+        runnerStatus = nil
         Store.save(state)
     }
 
@@ -135,6 +155,7 @@ final class AppModel {
         runnerTask = Task {
             await runQueue()
             runnerActive = false
+            countdown = nil
             runnerTask = nil
             UIApplication.shared.isIdleTimerDisabled = false
             Store.save(state)
@@ -217,10 +238,12 @@ final class AppModel {
             var remaining = Int(Double.random(in: low...high))
             while remaining > 0 {
                 if Task.isCancelled { return }
-                runnerStatus = "Pause de \(remaining) s avant le prochain unfollow…"
+                countdown = remaining
+                runnerStatus = "Prochain dans \(remaining) s"
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 remaining -= 1
             }
+            countdown = nil
         }
     }
 }

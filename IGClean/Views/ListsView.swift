@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ListsView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
     @State private var list: UserList = .fans
     @State private var query = ""
 
@@ -37,6 +38,14 @@ struct ListsView: View {
             }
             .searchable(text: $query, prompt: "Rechercher")
             .navigationTitle("Listes")
+            .navigationBarTitleDisplayMode(.inline)
+            .scrollContentBackground(.hidden)
+            .background(Theme.background.ignoresSafeArea())
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Fermer") { dismiss() }
+                }
+            }
         }
     }
 

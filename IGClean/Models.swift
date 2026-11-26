@@ -95,6 +95,58 @@ struct AppState: Codable {
     var settings = UnfollowSettings()
     var cooldownUntil: Date?
     var lastAttemptAt: Date?
+    /// Taille du nettoyage en cours, pour afficher l'avancement ; nil quand aucun n'est lancé.
+    var batchTotal: Int?
+}
+
+/// Rythme du nettoyage : plus il est rapide, plus Instagram risque de limiter le compte.
+enum Pace: String, CaseIterable, Identifiable {
+    case careful, normal, fast
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .careful: return "Prudent"
+        case .normal: return "Normal"
+        case .fast: return "Rapide"
+        }
+    }
+
+    var settings: UnfollowSettings {
+        switch self {
+        case .careful: return UnfollowSettings(hourlyCap: 15, dailyCap: 60, delayMin: 30, delayMax: 60)
+        case .normal: return UnfollowSettings(hourlyCap: 20, dailyCap: 100, delayMin: 20, delayMax: 45)
+        case .fast: return UnfollowSettings(hourlyCap: 40, dailyCap: 150, delayMin: 10, delayMax: 25)
+        }
+    }
+
+    static func matching(_ settings: UnfollowSettings) -> Pace {
+        allCases.first { $0.settings.hourlyCap == settings.hourlyCap } ?? .normal
+    }
+}
+
+/// Groupes proposés à l'écran de nettoyage.
+enum CleanGroup: String, CaseIterable, Identifiable {
+    case old, recent, verified
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .old: return "Suivis depuis plus de 3 mois"
+        case .recent: return "Suivis récemment"
+        case .verified: return "Comptes vérifiés"
+        }
+    }
+
+    var hint: String {
+        switch self {
+        case .old: return "jamais suivi en retour"
+        case .recent: return "vus depuis moins de 3 mois"
+        case .verified: return "marques, célébrités"
+        }
+    }
 }
 
 enum UserList: String, CaseIterable, Identifiable {
@@ -137,6 +189,20 @@ extension AppState {
     }
 
     var lastGoodSnapshot: Snapshot? { snapshots.first { $0.status == .ok } }
+
+    /// Comptes d'un groupe qui ne me suivent pas en retour. L'ancienneté part de la première fois
+    /// où l'app a vu l'abonnement : Instagram ne donne pas la vraie date.
+    func cleanCandidates(_ group: CleanGroup, now: Date = Date()) -> [IGUser] {
+        let limit = now.addingTimeInterval(-90 * 86400)
+        return users(in: .nonFollowers).filter { user in
+            let isOld = (following[user.id] ?? now) < limit
+            switch group {
+            case .verified: return user.isVerified
+            case .old: return !user.isVerified && isOld
+            case .recent: return !user.isVerified && !isOld
+            }
+        }
+    }
 
     func unfollowsDone(since interval: TimeInterval, now: Date = Date()) -> Int {
         let limit = now.addingTimeInterval(-interval)
