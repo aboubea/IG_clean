@@ -59,6 +59,7 @@ struct HotInfluxView: View {
                     .listRowBackground(Theme.card)
             }
             .scrollContentBackground(.hidden)
+            .refreshable { await reload() }
             .safeAreaInset(edge: .bottom) {
                 Text("Données de démonstration. Branche un fournisseur pour couvrir tout Instagram.")
                     .font(.caption)
@@ -72,7 +73,7 @@ struct HotInfluxView: View {
         loading = true
         error = nil
         do {
-            rows = try await provider.top(window: window, metric: metric)
+            rows = try await provider.fetch()
         } catch {
             self.error = error.localizedDescription
         }

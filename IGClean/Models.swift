@@ -99,6 +99,43 @@ struct AppState: Codable {
     var batchTotal: Int?
     /// Nombre total d'unfollows faits depuis l'installation (le journal, lui, est plafonné).
     var lifetimeUnfollows = 0
+    /// Premier scan complet : point de départ de l'ancienneté des abonnements.
+    var firstScanAt: Date?
+    /// Plafond du jour atteint : le nettoyage reprend tout seul à l'ouverture de l'app après cette date.
+    var resumeAfter: Date?
+    /// Pause demandée par toi (ou arrêt de sécurité) : pas de reprise automatique.
+    var userPaused = false
+}
+
+extension AppState {
+    /// Décodage tolérant : une clé absente (champ ajouté dans une version plus récente) ou illisible
+    /// reprend sa valeur par défaut, au lieu de faire échouer toute la lecture et d'effacer l'historique.
+    init(from decoder: Decoder) throws {
+        self.init()
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        account = (try? c.decodeIfPresent(Account.self, forKey: .account)) ?? nil
+        users = (try? c.decodeIfPresent([String: IGUser].self, forKey: .users)) ?? [:]
+        followers = (try? c.decodeIfPresent([String: Date].self, forKey: .followers)) ?? [:]
+        following = (try? c.decodeIfPresent([String: Date].self, forKey: .following)) ?? [:]
+        events = (try? c.decodeIfPresent([ChangeEvent].self, forKey: .events)) ?? []
+        snapshots = (try? c.decodeIfPresent([Snapshot].self, forKey: .snapshots)) ?? []
+        queue = (try? c.decodeIfPresent([String].self, forKey: .queue)) ?? []
+        whitelist = (try? c.decodeIfPresent(Set<String>.self, forKey: .whitelist)) ?? []
+        log = (try? c.decodeIfPresent([UnfollowLog].self, forKey: .log)) ?? []
+        settings = (try? c.decodeIfPresent(UnfollowSettings.self, forKey: .settings)) ?? UnfollowSettings()
+        cooldownUntil = (try? c.decodeIfPresent(Date.self, forKey: .cooldownUntil)) ?? nil
+        lastAttemptAt = (try? c.decodeIfPresent(Date.self, forKey: .lastAttemptAt)) ?? nil
+        batchTotal = (try? c.decodeIfPresent(Int.self, forKey: .batchTotal)) ?? nil
+        lifetimeUnfollows = (try? c.decodeIfPresent(Int.self, forKey: .lifetimeUnfollows)) ?? 0
+        firstScanAt = (try? c.decodeIfPresent(Date.self, forKey: .firstScanAt)) ?? nil
+        resumeAfter = (try? c.decodeIfPresent(Date.self, forKey: .resumeAfter)) ?? nil
+        userPaused = (try? c.decodeIfPresent(Bool.self, forKey: .userPaused)) ?? false
+    }
+}
+
+/// « 1 compte », « 3 comptes » (en français, 0 et 1 sont au singulier).
+func plural(_ count: Int, _ singular: String, _ pluralForm: String? = nil) -> String {
+    "\(count) " + (count > 1 ? (pluralForm ?? singular + "s") : singular)
 }
 
 /// Santé du compte, d'après la part d'abonnements qui te suivent en retour.
@@ -242,6 +279,43 @@ extension AppState {
         }
     }
 
+    /// Début de l'historique connu de l'app.
+    var historyStart: Date? {
+        firstScanAt ?? snapshots.last { $0.status == .ok }?.at
+    }
+
+    /// Au moins 3 mois d'historique : la distinction « ancien / récent » a alors un sens.
+    var hasLongHistory: Bool {
+        guard let start = historyStart else { return false }
+        return Date().timeIntervalSince(start) >= 90 * 86400
+    }
+
+    /// Groupes affichés au nettoyage. Sans 3 mois d'historique, tous les abonnements paraissent
+    /// « récents » : on n'affiche alors qu'un groupe « non vérifiés ».
+    var cleanGroups: [CleanGroup] {
+        hasLongHistory ? CleanGroup.allCases : [.recent, .verified]
+    }
+
+    func title(for group: CleanGroup) -> String {
+        if group == .recent && !hasLongHistory { return "Comptes non vérifiés" }
+        return group.title
+    }
+
+    func hint(for group: CleanGroup) -> String {
+        if group == .recent && !hasLongHistory { return "ne te suivent pas en retour" }
+        return group.hint
+    }
+
+    /// Date à laquelle un unfollow redevient possible sous ce plafond, ou nil s'il reste de la marge.
+    func capFreesAt(cap: Int, window: TimeInterval, now: Date = Date()) -> Date? {
+        let limit = now.addingTimeInterval(-window)
+        // Journal du plus récent au plus ancien.
+        let recent = log.filter { $0.status == .done && $0.at > limit }
+        guard cap > 0, recent.count >= cap else { return nil }
+        // Il faut que le cap-ième plus récent sorte de la fenêtre pour repasser sous le plafond.
+        return recent[cap - 1].at.addingTimeInterval(window)
+    }
+
     /// Nombre de scans réussis sur des jours consécutifs finissant aujourd'hui (ou hier).
     var scanStreak: Int {
         let cal = Calendar.current
@@ -290,10 +364,5 @@ extension AppState {
             .compactMap { id in users[id].map { (user: $0, since: followers[id] ?? Date()) } }
             .sorted { $0.since < $1.since }
             .map { $0.user }
-    }
-
-    func unfollowsDone(since interval: TimeInterval, now: Date = Date()) -> Int {
-        let limit = now.addingTimeInterval(-interval)
-        return log.filter { $0.status == .done && $0.at > limit }.count
     }
 }

@@ -50,8 +50,9 @@ struct InfluencerRow: Codable, Identifiable {
 }
 
 /// Source des classements : la démo intégrée, ou plus tard un backend / fournisseur.
+/// Elle renvoie toutes les fenêtres d'un coup ; le tri se fait dans l'app.
 protocol HotInfluxProvider {
-    func top(window: GrowthWindow, metric: RankMetric) async throws -> [InfluencerRow]
+    func fetch() async throws -> [InfluencerRow]
 }
 
 extension Array where Element == InfluencerRow {
@@ -67,41 +68,48 @@ extension Array where Element == InfluencerRow {
 
 /// Jeu de données factice : aucune requête réseau, pour voir l'écran fonctionner.
 struct DemoInfluxProvider: HotInfluxProvider {
-    func top(window: GrowthWindow, metric: RankMetric) async throws -> [InfluencerRow] {
+    func fetch() async throws -> [InfluencerRow] {
         try await Task.sleep(nanoseconds: 300_000_000)
         return Self.rows
     }
 
+    /// Pseudos au format Instagram : minuscules sans accents, chiffres, points et tirets bas.
     private static let handles = [
         ("lea.moves", "Léa Moreau", "Fitness"), ("chef.nordin", "Nordin K.", "Cuisine"),
         ("studio.palette", "Studio Palette", "Art"), ("km.runner", "Kamel B.", "Running"),
         ("vibe.records", "Vibe Records", "Musique"), ("maison.lora", "Maison Lora", "Mode"),
-        ("tech.posé", "Yanis T.", "Tech"), ("green.margot", "Margot V.", "Jardin"),
-        ("surf.atlas", "Atlas Surf", "Voyage"), ("pixel.théo", "Théo R.", "Gaming"),
-        ("yoga.suna", "Suna I.", "Yoga"), ("auto.riviera", "Riviera Auto", "Auto"),
-        ("inès.books", "Inès D.", "Lecture"), ("drone.sky", "Sky Drone", "Photo"),
-        ("baby.lou", "Lou & Co", "Famille"), ("crypto.mbehdi", "Mehdi A.", "Finance"),
-        ("danse.okan", "Okan Y.", "Danse"), ("resto.belle", "Belle Table", "Food"),
-        ("mtb.côme", "Côme L.", "Vélo"), ("make.by.zoé", "Zoé M.", "Beauté"),
+        ("yanis.tech", "Yanis T.", "Tech"), ("green.margot", "Margot V.", "Jardin"),
+        ("atlas.surf", "Atlas Surf", "Voyage"), ("theo.pixel", "Théo R.", "Gaming"),
+        ("suna.yoga", "Suna I.", "Yoga"), ("riviera.auto", "Riviera Auto", "Auto"),
+        ("ines.books", "Inès D.", "Lecture"), ("sky.drone", "Sky Drone", "Photo"),
+        ("lou.and.co", "Lou & Co", "Famille"), ("mehdi.invest", "Mehdi A.", "Finance"),
+        ("okan.danse", "Okan Y.", "Danse"), ("belle.table", "Belle Table", "Food"),
+        ("come.mtb", "Côme L.", "Vélo"), ("zoe.makeup", "Zoé M.", "Beauté"),
     ]
 
+    private static func round1(_ value: Double) -> Double { (value * 10).rounded() / 10 }
+
+    /// Croissance cumulée, donc croissante avec la fenêtre ; une « accélération récente » propre à chaque
+    /// compte fait varier le classement selon la fenêtre choisie.
     private static let rows: [InfluencerRow] = handles.enumerated().map { index, item in
-        // Nombres plausibles et stables, décroissants avec le rang.
-        let seed = Double(index)
-        let followers = Int(1_200_000 / (seed + 1.4)) + 4_200
-        let base = 34 - seed * 1.5
+        let daily = 0.9 - 0.035 * Double(index)
+        let boost = 1 + 0.8 * Double((index * 7) % 5) / 4
+        let g5 = daily * 5 * boost
+        let g10 = g5 + daily * 5
+        let g20 = g10 + daily * 10 * 0.8
+        let g30 = g20 + daily * 10 * 0.6
         return InfluencerRow(
             id: "demo-\(index)",
             username: item.0,
             fullName: item.1,
             category: item.2,
             isVerified: index % 4 == 0,
-            followers: followers,
-            growth5: (base + 6).rounded() / 10 * 10 / 10,
-            growth10: max(0.4, base * 0.7).rounded() / 10,
-            growth20: max(0.3, base * 0.5).rounded() / 10,
-            growth30: max(0.2, base * 0.35).rounded() / 10,
-            engagementRate: max(0.8, 11 - seed * 0.45).rounded() / 10
+            followers: Int(1_500_000 / (Double((index * 7) % 20) + 1.3)) + 3_100,
+            growth5: round1(g5),
+            growth10: round1(g10),
+            growth20: round1(g20),
+            growth30: round1(g30),
+            engagementRate: round1((Double((index * 13) % 9) + 2.5) / 2)
         )
     }
 }

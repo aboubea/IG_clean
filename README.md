@@ -45,9 +45,12 @@ n'est pas possible depuis la session de l'appareil : il faut une source externe,
 
 ## Limites liées à iOS
 
-- iOS suspend les apps en arrière-plan : le scan se fait à l'ouverture de l'app, et la file d'unfollow n'avance
-  que tant que l'app reste au premier plan (l'écran est maintenu allumé pendant le traitement).
-- Les données restent sur l'appareil ; « Se déconnecter et tout effacer » supprime la session et l'historique.
+- iOS suspend les apps en arrière-plan : le scan se fait à l'ouverture de l'app (ou en tirant l'écran vers le bas),
+  et le nettoyage n'avance que tant que l'app reste au premier plan. L'écran reste allumé pendant ces deux tâches.
+- Plafond horaire atteint : l'app attend sur place et reprend toute seule. Plafond du jour atteint : le nettoyage
+  reprend tout seul à la prochaine ouverture de l'app, sauf si tu l'as mis en pause.
+- Les données restent sur l'appareil ; « Se déconnecter et tout effacer » (avec confirmation) supprime la session
+  et l'historique.
 
 ## Sécurités intégrées
 
@@ -55,6 +58,16 @@ n'est pas possible depuis la session de l'appareil : il faut une source externe,
 - Chaque compte est revérifié juste avant l'unfollow : quelqu'un qui s'est réabonné est épargné.
 - Au premier signe de limitation ou de vérification demandée par Instagram, la file s'arrête 24 h.
 - Le mot de passe est saisi dans la page d'Instagram elle-même ; l'app ne le voit pas.
+- Session refusée par Instagram : l'app efface le cookie périmé et redemande la connexion, au lieu de réessayer en boucle.
+- Fichier de données illisible : il est mis de côté (`state-….unreadable.json`) plutôt qu'écrasé.
+
+## Tests de logique
+
+La logique sans interface (modèle, moteur de scan, stockage, Hot Influx) se vérifie sans simulateur :
+
+```bash
+scripts/test-logic.sh
+```
 
 ## Structure
 

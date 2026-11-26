@@ -49,7 +49,7 @@ struct ShareCardView: View {
 
             HStack(spacing: 8) {
                 Circle()
-                    .fill(Theme.lime)
+                    .fill(stats.health.color)
                     .frame(width: 9, height: 9)
                 Text(stats.health.label)
                     .font(.system(size: 15, weight: .bold))

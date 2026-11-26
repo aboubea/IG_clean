@@ -13,7 +13,7 @@ final class AppModel {
     private(set) var lastError: String?
     private(set) var runnerActive = false
     private(set) var runnerStatus: String?
-    /// Secondes avant le prochain unfollow, pendant la pause entre deux.
+    /// Secondes restantes pendant une attente (délai entre deux unfollows ou plafond horaire).
     private(set) var countdown: Int?
 
     let client = InstagramClient()
@@ -21,16 +21,26 @@ final class AppModel {
 
     var isScanning: Bool { scanProgress != nil }
 
+    var cooldownActive: Bool { (state.cooldownUntil ?? .distantPast) > Date() }
+
+    /// Reprise automatique prévue après le plafond du jour, si elle est encore à venir.
+    var scheduledResume: Date? {
+        guard let date = state.resumeAfter, date > Date() else { return nil }
+        return date
+    }
+
     // MARK: Démarrage et connexion
 
-    /// Appelé à chaque retour au premier plan : connexion si besoin, sinon scan du jour.
+    /// Appelé au lancement et à chaque retour au premier plan : connexion si besoin, scan du jour,
+    /// puis reprise d'un nettoyage interrompu par le plafond du jour.
     func refresh() async {
         guard !needsLogin, !isScanning else { return }
-        if await client.hasSession() {
-            if SnapshotEngine.scanDue(state) { await scan() }
-        } else {
+        guard await client.hasSession() else {
             needsLogin = true
+            return
         }
+        if SnapshotEngine.scanDue(state) { await scan() }
+        resumeIfDue()
     }
 
     /// Tourne tant que l'écran de connexion est affiché ; le referme dès que la session existe.
@@ -48,19 +58,32 @@ final class AppModel {
     }
 
     func logout() async {
-        stopRunner()
+        stopRunner(byUser: false)
         await client.logout()
         state = AppState()
         Store.save(state)
+        lastError = nil
+        runnerStatus = nil
+        needsLogin = true
+    }
+
+    /// Instagram a refusé la session alors que le cookie existe : il est périmé. On l'efface,
+    /// sinon l'écran de connexion se refermerait aussitôt et relancerait une requête, en boucle.
+    private func handleLoggedOut() async {
+        await client.logout()
         needsLogin = true
     }
 
     // MARK: Scan
 
     func scan() async {
-        guard !isScanning, !runnerActive else { return }
+        guard !isScanning, !runnerActive, !needsLogin else { return }
         scanProgress = "Connexion à Instagram…"
-        defer { scanProgress = nil }
+        updateIdleTimer()
+        defer {
+            scanProgress = nil
+            updateIdleTimer()
+        }
         state.lastAttemptAt = Date()
         do {
             let me = try await client.me()
@@ -82,7 +105,7 @@ final class AppModel {
                 ? nil
                 : "Scan incomplet (\(followers.count)/\(me.followerCount ?? 0) abonnés, \(following.count)/\(me.followingCount ?? 0) abonnements) : il a été ignoré pour ne pas fausser les listes."
         } catch IGError.loggedOut {
-            needsLogin = true
+            await handleLoggedOut()
         } catch {
             lastError = error.localizedDescription
             state.snapshots.insert(Snapshot(at: Date(), status: .error, error: error.localizedDescription), at: 0)
@@ -112,9 +135,11 @@ final class AppModel {
     }
 
     func clearQueue() {
-        stopRunner()
+        stopRunner(byUser: false)
         state.queue = []
         state.batchTotal = nil
+        state.resumeAfter = nil
+        state.userPaused = false
         runnerStatus = nil
         Store.save(state)
     }
@@ -135,36 +160,46 @@ final class AppModel {
         Store.save(state)
     }
 
-    func updateSettings(_ change: (inout UnfollowSettings) -> Void) {
-        change(&state.settings)
-        Store.save(state)
-    }
-
     // MARK: File d'unfollow
 
-    var cooldownActive: Bool {
-        if let until = state.cooldownUntil { return until > Date() }
-        return false
-    }
-
     func startRunner() {
-        guard runnerTask == nil, !isScanning, !cooldownActive, !state.queue.isEmpty else { return }
+        guard runnerTask == nil, !isScanning, !needsLogin, !cooldownActive, !state.queue.isEmpty else { return }
         runnerActive = true
         lastError = nil
-        UIApplication.shared.isIdleTimerDisabled = true // l'écran reste allumé pendant le traitement
+        state.userPaused = false
+        state.resumeAfter = nil
+        updateIdleTimer()
         runnerTask = Task {
             await runQueue()
             runnerActive = false
             countdown = nil
             runnerTask = nil
-            UIApplication.shared.isIdleTimerDisabled = false
+            updateIdleTimer()
             Store.save(state)
         }
     }
 
-    func stopRunner() {
-        runnerTask?.cancel()
-        if runnerActive { runnerStatus = "En pause." }
+    /// `byUser` : pause demandée par toi, donc pas de reprise automatique à la prochaine ouverture.
+    func stopRunner(byUser: Bool = true) {
+        guard let runnerTask else { return }
+        runnerTask.cancel()
+        if byUser {
+            state.userPaused = true
+            runnerStatus = "En pause."
+            Store.save(state)
+        }
+    }
+
+    /// Reprend un nettoyage arrêté par le plafond du jour, sauf pause volontaire ou arrêt de sécurité.
+    private func resumeIfDue() {
+        guard !runnerActive, !needsLogin, !state.queue.isEmpty, !state.userPaused, !cooldownActive else { return }
+        if scheduledResume != nil { return }
+        startRunner()
+    }
+
+    private func updateIdleTimer() {
+        // L'écran reste allumé pendant un scan ou un nettoyage : iOS suspend les apps verrouillées.
+        UIApplication.shared.isIdleTimerDisabled = isScanning || runnerActive
     }
 
     private func record(_ userId: String, _ status: UnfollowStatus, _ detail: String? = nil) {
@@ -177,16 +212,22 @@ final class AppModel {
         while !Task.isCancelled {
             guard let userId = state.queue.first else {
                 runnerStatus = "File terminée."
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
                 return
             }
-            if state.unfollowsDone(since: 3600) >= state.settings.hourlyCap {
-                runnerStatus = "Plafond horaire atteint : reprends dans une heure."
+            let now = Date()
+            if let freesAt = state.capFreesAt(cap: state.settings.dailyCap, window: 86400, now: now) {
+                state.resumeAfter = freesAt
+                runnerStatus = "Plafond du jour atteint."
                 return
             }
-            if state.unfollowsDone(since: 86400) >= state.settings.dailyCap {
-                runnerStatus = "Plafond journalier atteint : reprends demain."
-                return
+            if let freesAt = state.capFreesAt(cap: state.settings.hourlyCap, window: 3600, now: now) {
+                // L'app est ouverte : on patiente sur place jusqu'à ce qu'un créneau se libère.
+                let resumeAt = freesAt.addingTimeInterval(Double.random(in: 5...30))
+                guard await wait(until: resumeAt, label: "Plafond horaire atteint · reprise dans") else { return }
+                continue
             }
+
             runnerStatus = "Unfollow de @\(state.users[userId]?.username ?? userId)…"
             do {
                 // Revérification en direct : on n'unfollow jamais quelqu'un qui s'est (ré)abonné entre-temps.
@@ -206,14 +247,15 @@ final class AppModel {
                 }
                 failures = 0
             } catch IGError.loggedOut {
-                needsLogin = true
-                runnerStatus = "Session expirée."
+                runnerStatus = "Session expirée : reconnecte-toi."
+                await handleLoggedOut()
                 return
             } catch let error as IGError {
                 switch error {
                 case .rateLimited, .checkpoint:
-                    // Premier signe de blocage : on arrête tout pendant 24 h.
+                    // Premier signe de blocage : arrêt 24 h, et reprise seulement à ta demande.
                     state.cooldownUntil = Date().addingTimeInterval(86400)
+                    state.userPaused = true
                     lastError = error.localizedDescription
                     runnerStatus = "Arrêt de sécurité."
                     return
@@ -228,6 +270,7 @@ final class AppModel {
             state.queue.removeAll { $0 == userId }
             Store.save(state)
             if failures >= 3 {
+                state.userPaused = true
                 lastError = "3 échecs consécutifs : arrêt par sécurité."
                 runnerStatus = "Arrêt de sécurité."
                 return
@@ -236,15 +279,28 @@ final class AppModel {
 
             let low = state.settings.delayMin
             let high = max(low, state.settings.delayMax)
-            var remaining = Int(Double.random(in: low...high))
-            while remaining > 0 {
-                if Task.isCancelled { return }
-                countdown = remaining
-                runnerStatus = "Prochain dans \(remaining) s"
-                try? await Task.sleep(nanoseconds: 1_000_000_000)
-                remaining -= 1
-            }
-            countdown = nil
+            let next = Date().addingTimeInterval(Double.random(in: low...high))
+            guard await wait(until: next, label: "Prochain dans") else { return }
         }
+    }
+
+    /// Attend jusqu'à `date` en affichant le temps restant ; renvoie false si la tâche a été annulée.
+    private func wait(until date: Date, label: String) async -> Bool {
+        while date.timeIntervalSinceNow > 0 {
+            if Task.isCancelled { break }
+            let remaining = Int(date.timeIntervalSinceNow.rounded(.up))
+            countdown = remaining
+            runnerStatus = label + " " + Self.format(seconds: remaining)
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+        }
+        countdown = nil
+        return !Task.isCancelled
+    }
+
+    private static func format(seconds: Int) -> String {
+        if seconds < 60 { return "\(seconds) s" }
+        let minutes = seconds / 60
+        let rest = seconds % 60
+        return rest == 0 ? "\(minutes) min" : "\(minutes) min \(rest) s"
     }
 }

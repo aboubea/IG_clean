@@ -4,6 +4,7 @@ import SwiftUI
 struct PulseView: View {
     @Environment(AppModel.self) private var model
     @State private var sheet: PulseSheet?
+    @State private var confirmWipe = false
 
     var body: some View {
         let state = model.state
@@ -18,8 +19,13 @@ struct PulseView: View {
                         recentCard
                     } else if !model.isScanning {
                         Card {
-                            Text("Aucun scan pour l’instant. Touche la flèche en haut à droite pour lancer le premier : il sert de référence, les changements apparaissent dès le suivant.")
-                                .foregroundStyle(Theme.muted)
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Pas encore de scan")
+                                    .font(.headline)
+                                Text("Le premier scan sert de référence : les changements apparaissent dès le suivant. Garde l’app ouverte pendant qu’il tourne.")
+                                    .font(.subheadline)
+                                    .foregroundStyle(Theme.muted)
+                            }
                         }
                     }
                 }
@@ -27,6 +33,8 @@ struct PulseView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 24)
             }
+            // Tirer vers le bas lance un scan ; l'avancement s'affiche dans la carte d'état.
+            .refreshable { Task { await model.scan() } }
             .background(Theme.background.ignoresSafeArea())
             .safeAreaInset(edge: .bottom) { callToAction }
             .navigationTitle(title)
@@ -36,11 +44,13 @@ struct PulseView: View {
                     Menu {
                         Button("Hot Influx", systemImage: "flame") { sheet = .hotInflux }
                         Button("Partager mon bilan", systemImage: "square.and.arrow.up") { sheet = .recap }
+                            .disabled(state.lastGoodSnapshot == nil)
                         Button("Mes fans fidèles", systemImage: "star") { sheet = .fans }
                         Button("Listes", systemImage: "person.2") { sheet = .lists }
                         Button("Historique", systemImage: "clock") { sheet = .history }
+                        Divider()
                         Button("Se déconnecter et tout effacer", systemImage: "trash", role: .destructive) {
-                            Task { await model.logout() }
+                            confirmWipe = true
                         }
                     } label: {
                         Label("Menu", systemImage: "person.circle")
@@ -54,6 +64,13 @@ struct PulseView: View {
                     }
                     .disabled(model.isScanning || model.runnerActive)
                 }
+            }
+            .confirmationDialog("Se déconnecter et tout effacer ?", isPresented: $confirmWipe, titleVisibility: .visible) {
+                Button("Tout effacer", role: .destructive) {
+                    Task { await model.logout() }
+                }
+            } message: {
+                Text("L’historique, les listes et la file d’unfollow seront supprimés de cet iPhone. Ton compte Instagram n’est pas touché.")
             }
             .sheet(item: $sheet) { kind in
                 switch kind {
@@ -81,15 +98,16 @@ struct PulseView: View {
             Card {
                 HStack(spacing: 12) {
                     ProgressView()
-                    Text(progress)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(progress)
+                        Text("Garde l’app ouverte pendant le scan.")
+                            .font(.caption)
+                            .foregroundStyle(Theme.muted)
+                    }
                 }
             }
         } else if let error = model.lastError {
-            Card {
-                Label(error, systemImage: "exclamationmark.triangle")
-                    .font(.footnote)
-                    .foregroundStyle(Theme.coral)
-            }
+            ErrorCard(message: error)
         }
     }
 
@@ -101,6 +119,7 @@ struct PulseView: View {
                 .font(.system(size: 68, weight: .heavy))
                 .minimumScaleFactor(0.5)
                 .lineLimit(1)
+                .contentTransition(.numericText())
             if let delta = monthDelta {
                 Text("\(delta >= 0 ? "▲" : "▼") \(abs(delta)) sur 30 jours")
                     .font(.caption)
@@ -150,6 +169,7 @@ struct PulseView: View {
         .padding(12)
         .frame(maxWidth: .infinity, minHeight: 84, alignment: .topLeading)
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .accessibilityElement(children: .combine)
     }
 
     private var highlightsCard: some View {
@@ -158,7 +178,7 @@ struct PulseView: View {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 10) {
                     Circle()
-                        .fill(healthColor(stats.health))
+                        .fill(stats.health.color)
                         .frame(width: 10, height: 10)
                     Text(stats.health.label)
                         .font(.headline)
@@ -170,6 +190,7 @@ struct PulseView: View {
                         Text("🔥 \(stats.scanStreak) j")
                             .font(.subheadline)
                             .fontWeight(.semibold)
+                            .accessibilityLabel("Série de \(stats.scanStreak) jours")
                     }
                 }
                 Button {
@@ -179,14 +200,6 @@ struct PulseView: View {
                 }
                 .buttonStyle(GhostButtonStyle())
             }
-        }
-    }
-
-    private func healthColor(_ health: AccountHealth) -> Color {
-        switch health {
-        case .excellent: return Theme.lime
-        case .good: return .yellow
-        case .watch: return Theme.coral
         }
     }
 
@@ -227,12 +240,20 @@ struct PulseView: View {
         let pending = state.count(in: .nonFollowers)
         if model.runnerActive || !state.queue.isEmpty || state.batchTotal != nil {
             let total = state.batchTotal ?? state.queue.count
-            Button("Nettoyage · \(max(0, total - state.queue.count)) sur \(total)") { sheet = .clean }
+            let done = max(0, total - state.queue.count)
+            Button("Nettoyage · \(done) sur \(total)") { sheet = .clean }
                 .buttonStyle(PrimaryButtonStyle())
                 .padding(.horizontal, 20)
                 .padding(.bottom, 8)
+        } else if state.lastGoodSnapshot == nil {
+            if !model.isScanning {
+                Button("Lancer le premier scan") { Task { await model.scan() } }
+                    .buttonStyle(PrimaryButtonStyle())
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 8)
+            }
         } else if pending > 0 {
-            Button(pending > 1 ? "Nettoyer \(pending) comptes" : "Nettoyer 1 compte") { sheet = .clean }
+            Button("Nettoyer " + plural(pending, "compte")) { sheet = .clean }
                 .buttonStyle(PrimaryButtonStyle())
                 .padding(.horizontal, 20)
                 .padding(.bottom, 8)
@@ -258,6 +279,42 @@ struct PulseView: View {
     private func latestCount(_ type: EventType) -> Int {
         guard let last = model.state.lastGoodSnapshot else { return 0 }
         return model.state.events.filter { $0.type == type && abs($0.at.timeIntervalSince(last.at)) < 1 }.count
+    }
+}
+
+/// Erreur lisible ; le détail technique (entre crochets dans le message) est replié derrière un bouton.
+private struct ErrorCard: View {
+    let message: String
+    @State private var showDetails = false
+
+    var body: some View {
+        let parts = split
+        Card {
+            VStack(alignment: .leading, spacing: 8) {
+                Label(parts.summary, systemImage: "exclamationmark.triangle")
+                    .font(.footnote)
+                    .foregroundStyle(Theme.coral)
+                if let details = parts.details {
+                    Button(showDetails ? "Masquer les détails" : "Détails techniques") {
+                        showDetails.toggle()
+                    }
+                    .font(.caption)
+                    if showDetails {
+                        Text(details)
+                            .font(.caption.monospaced())
+                            .foregroundStyle(Theme.muted)
+                            .textSelection(.enabled)
+                    }
+                }
+            }
+        }
+    }
+
+    private var split: (summary: String, details: String?) {
+        guard message.hasSuffix("]"), let open = message.range(of: " [") else { return (message, nil) }
+        let summary = String(message[..<open.lowerBound])
+        let details = String(message[open.upperBound...].dropLast())
+        return (summary, details)
     }
 }
 

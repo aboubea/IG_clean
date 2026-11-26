@@ -8,10 +8,18 @@ struct LoginView: View {
 
     var body: some View {
         NavigationStack {
-            LoginWebView()
-                .ignoresSafeArea(edges: .bottom)
-                .navigationTitle("Connexion à Instagram")
-                .navigationBarTitleDisplayMode(.inline)
+            VStack(spacing: 0) {
+                Label("Tu te connectes sur la page officielle d’Instagram. Ton mot de passe ne passe jamais par l’app.", systemImage: "lock.fill")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Theme.card)
+                LoginWebView()
+                    .ignoresSafeArea(edges: .bottom)
+            }
+            .navigationTitle("Connexion à Instagram")
+            .navigationBarTitleDisplayMode(.inline)
         }
         .task { await model.waitForLogin() }
     }

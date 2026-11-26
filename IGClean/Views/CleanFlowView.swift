@@ -36,23 +36,26 @@ private struct CleanSetupView: View {
 
     var body: some View {
         let selection = selectedIds
+        let pending = model.state.count(in: .nonFollowers)
+        let heading: String = pending == 1 ? "1 compte ne te suit pas" : "\(pending) comptes ne te suivent pas"
+        let launchLabel: String = selection.isEmpty ? "Lancer le nettoyage" : "Lancer le nettoyage · \(selection.count)"
         VStack(spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("\(model.state.count(in: .nonFollowers)) comptes ne te suivent pas")
+                    Text(heading)
                         .font(.title)
                         .fontWeight(.heavy)
                     Text("Choisis par groupes. Ouvre un groupe pour garder quelqu’un.")
                         .font(.subheadline)
                         .foregroundStyle(Theme.muted)
-                    ForEach(CleanGroup.allCases) { group in
+                    ForEach(model.state.cleanGroups) { group in
                         groupCard(group)
                     }
                     paceCard(count: selection.count)
                 }
                 .padding(20)
             }
-            Button("Lancer le nettoyage") {
+            Button(launchLabel) {
                 model.startCleaning(selection, pace: pace)
             }
             .buttonStyle(PrimaryButtonStyle())
@@ -67,7 +70,7 @@ private struct CleanSetupView: View {
     /// Comptes des groupes activés, hors comptes gardés.
     private var selectedIds: Set<String> {
         var ids: Set<String> = []
-        for group in enabled {
+        for group in model.state.cleanGroups where enabled.contains(group) {
             for user in model.state.cleanCandidates(group) where !model.state.whitelist.contains(user.id) {
                 ids.insert(user.id)
             }
@@ -79,9 +82,8 @@ private struct CleanSetupView: View {
     private func groupCard(_ group: CleanGroup) -> some View {
         let users = model.state.cleanCandidates(group)
         let kept = users.filter { model.state.whitelist.contains($0.id) }.count
-        let countText = users.count > 1 ? "\(users.count) comptes" : "1 compte"
-        let keptText = kept > 1 ? "\(kept) gardés" : "1 gardé"
-        let detail = countText + " · " + (kept > 0 ? keptText : group.hint)
+        let title = model.state.title(for: group)
+        let detail = plural(users.count, "compte") + " · " + (kept > 0 ? plural(kept, "gardé") : model.state.hint(for: group))
         if !users.isEmpty {
             Card {
                 HStack(spacing: 12) {
@@ -90,7 +92,7 @@ private struct CleanSetupView: View {
                     } label: {
                         VStack(alignment: .leading, spacing: 3) {
                             HStack(spacing: 6) {
-                                Text(group.title)
+                                Text(title)
                                     .font(.headline)
                                     .multilineTextAlignment(.leading)
                                 Image(systemName: "chevron.right")
@@ -104,12 +106,28 @@ private struct CleanSetupView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .buttonStyle(.plain)
-                    Toggle(group.title, isOn: binding(for: group))
+                    Toggle(title, isOn: binding(for: group))
                         .labelsHidden()
                         .tint(Theme.lime)
                 }
             }
         }
+    }
+
+    /// Durée estimée : au-delà du plafond horaire, l'app attend sur place ; au-delà du plafond du jour,
+    /// elle reprend le lendemain à l'ouverture.
+    static func duration(count: Int, settings: UnfollowSettings) -> String {
+        guard count > 0 else { return "rien à faire" }
+        if count > settings.dailyCap {
+            let days = Int((Double(count) / Double(settings.dailyCap)).rounded(.up))
+            return "environ \(days) jours (\(settings.dailyCap) par jour max), app ouverte"
+        }
+        if count > settings.hourlyCap {
+            let hours = Int((Double(count) / Double(settings.hourlyCap)).rounded(.up))
+            return "environ \(hours) h, app ouverte"
+        }
+        let minutes = max(1, Int(Double(count) * (settings.delayMin + settings.delayMax) / 2 / 60))
+        return "environ \(minutes) min, app ouverte"
     }
 
     private func binding(for group: CleanGroup) -> Binding<Bool> {
@@ -126,12 +144,7 @@ private struct CleanSetupView: View {
     }
 
     private func paceCard(count: Int) -> some View {
-        let settings = pace.settings
-        let sessions = max(1, Int((Double(count) / Double(settings.hourlyCap)).rounded(.up)))
-        let minutes = max(1, Int(Double(min(count, settings.hourlyCap)) * (settings.delayMin + settings.delayMax) / 2 / 60))
-        let countText = count > 1 ? "\(count) comptes" : "\(count) compte"
-        let sessionText = sessions > 1 ? "\(sessions) séances" : "1 séance"
-        let estimate = countText + " · environ " + sessionText + " de \(minutes) min, app ouverte"
+        let estimate = plural(count, "compte") + " · " + Self.duration(count: count, settings: pace.settings)
         return Card {
             VStack(alignment: .leading, spacing: 10) {
                 Kicker("Rythme")
@@ -188,7 +201,7 @@ private struct CleanGroupDetailView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.background.ignoresSafeArea())
-        .navigationTitle(group.title)
+        .navigationTitle(model.state.title(for: group))
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -203,7 +216,7 @@ private struct CleanProgressView: View {
         let total = max(state.batchTotal ?? state.queue.count, 1)
         let done = max(0, total - state.queue.count)
         VStack(spacing: 14) {
-            Kicker(model.runnerActive ? "Nettoyage en cours" : "Nettoyage en pause")
+            Kicker(kicker)
                 .padding(.top, 12)
             ZStack {
                 Circle()
@@ -227,6 +240,12 @@ private struct CleanProgressView: View {
             Text(model.runnerStatus ?? "Prêt à reprendre.")
                 .font(.headline)
                 .multilineTextAlignment(.center)
+            if !model.runnerActive, let resume = model.scheduledResume {
+                Text("Plafond du jour atteint. Le nettoyage reprend tout seul quand tu rouvres l’app après \(resume.formatted(date: .omitted, time: .shortened)).")
+                    .font(.footnote)
+                    .foregroundStyle(Theme.muted)
+                    .multilineTextAlignment(.center)
+            }
             if model.runnerActive {
                 Text("Garde l’app ouverte : iOS met les apps en pause en arrière-plan.")
                     .font(.footnote)
@@ -267,16 +286,23 @@ private struct CleanProgressView: View {
                 Button("Mettre en pause") { model.stopRunner() }
                     .buttonStyle(GhostButtonStyle())
             } else {
+                let blocked = model.cooldownActive || model.isScanning || model.scheduledResume != nil
                 Button("Reprendre") { model.startRunner() }
                     .buttonStyle(PrimaryButtonStyle())
-                    .disabled(model.cooldownActive || model.isScanning)
-                    .opacity(model.cooldownActive || model.isScanning ? 0.4 : 1)
+                    .disabled(blocked)
+                    .opacity(blocked ? 0.4 : 1)
                 Button("Annuler le nettoyage", role: .destructive) { model.clearQueue() }
                     .font(.footnote)
             }
         }
         .padding(.horizontal, 20)
         .padding(.bottom, 12)
+    }
+
+    private var kicker: String {
+        if model.runnerActive { return "Nettoyage en cours" }
+        if model.scheduledResume != nil { return "Reprise prévue" }
+        return "Nettoyage en pause"
     }
 
     private func label(for entry: UnfollowLog) -> String {

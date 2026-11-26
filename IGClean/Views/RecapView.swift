@@ -6,6 +6,7 @@ struct RecapView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @State private var imageURL: URL?
+    @State private var previewImage: UIImage?
 
     var body: some View {
         let stats = model.state.stats
@@ -22,8 +23,8 @@ struct RecapView: View {
                         .padding(.top, 12)
 
                     VStack(spacing: 10) {
-                        if let imageURL {
-                            ShareLink(item: imageURL, preview: SharePreview("Mon bilan IG Clean", image: Image(systemName: "chart.bar"))) {
+                        if let imageURL, let previewImage {
+                            ShareLink(item: imageURL, preview: SharePreview("Mon bilan IG Clean", image: Image(uiImage: previewImage))) {
                                 Label("Partager l’image", systemImage: "square.and.arrow.up")
                             }
                             .buttonStyle(PrimaryButtonStyle())
@@ -53,7 +54,12 @@ struct RecapView: View {
                     Button("Fermer") { dismiss() }
                 }
             }
-            .task { imageURL = render(username: username, stats: stats) }
+            .task {
+                if let rendered = render(username: username, stats: stats) {
+                    previewImage = rendered.image
+                    imageURL = rendered.url
+                }
+            }
         }
     }
 
@@ -63,14 +69,14 @@ struct RecapView: View {
 
     /// Rend la carte en PNG dans un fichier temporaire, à partager tel quel.
     @MainActor
-    private func render(username: String, stats: Stats) -> URL? {
+    private func render(username: String, stats: Stats) -> (url: URL, image: UIImage)? {
         let renderer = ImageRenderer(content: ShareCardView(username: username, stats: stats))
         renderer.scale = 3
         guard let image = renderer.uiImage, let data = image.pngData() else { return nil }
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("ig-clean-bilan.png")
         do {
             try data.write(to: url, options: .atomic)
-            return url
+            return (url, image)
         } catch {
             return nil
         }

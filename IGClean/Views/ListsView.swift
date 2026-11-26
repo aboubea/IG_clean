@@ -16,8 +16,9 @@ struct ListsView: View {
                             Text(item.label).tag(item)
                         }
                     }
+                    .listRowBackground(Theme.card)
                 }
-                Section("\(users.count) compte\(users.count > 1 ? "s" : "")") {
+                Section(plural(users.count, "compte")) {
                     ForEach(users) { user in
                         if let url = URL(string: "https://www.instagram.com/\(user.username)/") {
                             Link(destination: url) {
@@ -34,6 +35,7 @@ struct ListsView: View {
                             UserLabel(user: user)
                         }
                     }
+                    .listRowBackground(Theme.card)
                 }
             }
             .searchable(text: $query, prompt: "Rechercher")

@@ -16,6 +16,7 @@ struct HistoryView: View {
                             Text(type.label).tag(EventType?.some(type))
                         }
                     }
+                    .listRowBackground(Theme.card)
                 }
                 Section {
                     if events.isEmpty {
@@ -25,6 +26,7 @@ struct HistoryView: View {
                     ForEach(events.prefix(500)) { event in
                         EventRow(event: event)
                     }
+                    .listRowBackground(Theme.card)
                 }
                 if !model.state.log.isEmpty {
                     Section("Journal des unfollows") {
@@ -36,6 +38,7 @@ struct HistoryView: View {
                                 Text(label(for: entry))
                             }
                         }
+                        .listRowBackground(Theme.card)
                     }
                 }
             }

@@ -93,3 +93,13 @@ struct Sparkline: Shape {
         return path
     }
 }
+
+extension AccountHealth {
+    var color: Color {
+        switch self {
+        case .excellent: return Theme.lime
+        case .good: return .yellow
+        case .watch: return Theme.coral
+        }
+    }
+}

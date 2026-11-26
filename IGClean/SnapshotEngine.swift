@@ -61,8 +61,12 @@ enum SnapshotEngine {
         state.followers = diff(state.followers, followers, gained: .followerGained, lost: .followerLost)
         state.following = diff(state.following, following, gained: .followingAdded, lost: .followingRemoved)
         state.events = Array((fresh + state.events).prefix(maxEvents))
+        if state.firstScanAt == nil { state.firstScanAt = at }
         // La file ne garde que des comptes que je suis encore et qui ne me suivent pas.
-        state.queue.removeAll { state.following[$0] == nil || state.followers[$0] != nil }
+        // Copies locales : lire `state` dans la closure pendant qu'on modifie `state.queue` serait un accès concurrent.
+        let currentFollowers = state.followers
+        let currentFollowing = state.following
+        state.queue.removeAll { currentFollowing[$0] == nil || currentFollowers[$0] != nil }
         return .ok
     }
 

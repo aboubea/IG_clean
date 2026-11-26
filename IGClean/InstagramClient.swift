@@ -89,6 +89,8 @@ final class InstagramClient: NSObject, WKNavigationDelegate {
     let webView: WKWebView
     private var ready = false
     private var loadContinuation: CheckedContinuation<Void, Error>?
+    /// Identifie le chargement en cours, pour que le délai maximum d'un ancien chargement n'affecte pas le suivant.
+    private var loadToken = 0
 
     override init() {
         webView = WKWebView(frame: CGRect(x: 0, y: 0, width: 390, height: 844), configuration: Self.makeConfiguration())
@@ -120,6 +122,15 @@ final class InstagramClient: NSObject, WKNavigationDelegate {
     }
 
     private func prepare() async throws {
+        loadToken += 1
+        let token = loadToken
+        // Garde-fou : sans réponse de la page sous 25 s, on abandonne au lieu d'attendre indéfiniment.
+        let timeout = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 25_000_000_000)
+            guard !Task.isCancelled, let self, self.loadToken == token else { return }
+            self.finishLoad(IGError.page("Instagram met trop de temps à répondre."))
+        }
+        defer { timeout.cancel() }
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             loadContinuation?.resume(throwing: IGError.page("chargement interrompu"))
             loadContinuation = continuation
@@ -141,7 +152,7 @@ final class InstagramClient: NSObject, WKNavigationDelegate {
         guard let continuation = loadContinuation else { return }
         loadContinuation = nil
         if let error {
-            continuation.resume(throwing: IGError.page(error.localizedDescription))
+            continuation.resume(throwing: error as? IGError ?? IGError.page(error.localizedDescription))
         } else {
             continuation.resume()
         }
@@ -152,10 +163,13 @@ final class InstagramClient: NSObject, WKNavigationDelegate {
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        // -999 : navigation remplacée par une autre (redirection) ; on attend la suivante.
+        if (error as NSError).code == NSURLErrorCancelled { return }
         finishLoad(error)
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        if (error as NSError).code == NSURLErrorCancelled { return }
         finishLoad(error)
     }
 
@@ -175,9 +189,9 @@ final class InstagramClient: NSObject, WKNavigationDelegate {
     if (method === 'POST') headers['Content-Type'] = 'application/x-www-form-urlencoded';
     try {
       const r = await fetch(path, { method: method, headers: headers, body: body || undefined, credentials: 'include' });
-      return { status: r.status, text: await r.text() };
+      return { status: r.status, text: await r.text(), url: r.url || '' };
     } catch (e) {
-      return { status: -1, text: String(e) };
+      return { status: -1, text: String(e), url: '' };
     }
     """
 
@@ -202,6 +216,8 @@ final class InstagramClient: NSObject, WKNavigationDelegate {
         guard let result = raw as? [String: Any] else { throw IGError.page("réponse illisible") }
         let status = (result["status"] as? NSNumber)?.intValue ?? -1
         let text = result["text"] as? String ?? ""
+        // Adresse finale après redirections : une page de connexion ou de vérification se reconnaît ici.
+        let finalURL = (result["url"] as? String ?? "").lowercased()
         let json = (try? JSONSerialization.jsonObject(with: Data(text.utf8))) as? [String: Any]
         let message = json?["message"] as? String ?? ""
         let lowered = message.lowercased()
@@ -212,14 +228,17 @@ final class InstagramClient: NSObject, WKNavigationDelegate {
         let detail = "\(endpoint) · HTTP \(status) · \(snippet)"
 
         if status == -1 { throw IGError.page(text) }
-        if status == 401 || lowered.contains("login_required") || json?["require_login"] != nil || (status == 200 && json == nil) {
+        if finalURL.contains("/challenge") || lowered.contains("checkpoint") || json?["checkpoint_url"] != nil {
+            throw IGError.checkpoint
+        }
+        // Une page HTML n'est plus prise pour une déconnexion : seuls ces signaux explicites comptent.
+        if status == 401 || finalURL.contains("/accounts/login") || lowered.contains("login_required") || json?["require_login"] != nil {
             throw IGError.loggedOut
         }
         let spam = (json?["spam"] as? NSNumber)?.boolValue ?? false
         if status == 429 || spam || lowered.contains("feedback_required") || lowered.contains("wait a few minutes") {
             throw IGError.rateLimited(detail)
         }
-        if lowered.contains("checkpoint") || json?["checkpoint_url"] != nil { throw IGError.checkpoint }
         guard status == 200, let json else {
             throw IGError.http(status, detail)
         }
@@ -247,6 +266,8 @@ final class InstagramClient: NSObject, WKNavigationDelegate {
             )
         } catch IGError.loggedOut {
             throw IGError.loggedOut
+        } catch IGError.checkpoint {
+            throw IGError.checkpoint
         } catch {
             return Profile(id: id)
         }
